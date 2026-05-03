@@ -645,6 +645,7 @@ with tab1:
     # Phase 2: button is disabled — do the actual generation
     if st.session_state.pres_generating:
         p = st.session_state.pres_params
+        _pres_error = False
         try:
             with st.spinner("Crafting your presentation and generating a cover photo... ~20 seconds"):
                 pptx_bytes = generate_presentation(
@@ -656,9 +657,11 @@ with tab1:
             st.session_state.pres_result = pptx_bytes
         except Exception as e:
             _handle_groq_error(e)
+            _pres_error = True
         finally:
             st.session_state.pres_generating = False
-        st.rerun()
+        if not _pres_error:
+            st.rerun()
 
     # Phase 3: show result
     if st.session_state.pres_result:
@@ -748,6 +751,7 @@ with tab2:
     # Phase 2: button is disabled — do the generation
     if st.session_state.lp_generating:
         p = st.session_state.lp_params
+        _lp_error = False
         try:
             with st.spinner("Crafting your lesson plan... this takes about 15 seconds"):
                 pdf_bytes = generate_lesson_plan(
@@ -758,9 +762,11 @@ with tab2:
             st.session_state.lp_result = pdf_bytes
         except Exception as e:
             _handle_groq_error(e)
+            _lp_error = True
         finally:
             st.session_state.lp_generating = False
-        st.rerun()
+        if not _lp_error:
+            st.rerun()
 
     # Phase 3: show result
     if st.session_state.lp_result:
