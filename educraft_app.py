@@ -654,7 +654,7 @@ with tab1:
                 f"(attempt {attempt} of 3)..."
             )
         try:
-            _status.info("🎨 Crafting your presentation and generating a cover photo...")
+            _status.info("🎨 Crafting your presentation...")
             pptx_bytes = generate_presentation(
                 topic=p["topic"], grade=p["grade"], subject=p["subject"],
                 num_slides=p["num_slides"], tone=p["tone"],

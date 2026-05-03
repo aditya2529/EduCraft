@@ -39,5 +39,15 @@ def call_groq(system: str, user: str, temperature: float, api_key: str,
 
 
 def parse_json_response(raw: str) -> dict:
+    # Strip markdown fences
     cleaned = re.sub(r"^```json\s*|^```\s*|```$", "", raw, flags=re.MULTILINE).strip()
-    return json.loads(cleaned)
+    # Try direct parse first
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Model added text before/after the JSON — extract the outermost { ... }
+        start = cleaned.find("{")
+        end   = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            return json.loads(cleaned[start : end + 1])
+        raise

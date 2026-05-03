@@ -11,7 +11,7 @@ def _fetch_pollinations(query: str) -> bytes | None:
         f"?width=1920&height=1080&nologo=true&seed={random.randint(1, 99999)}"
     )
     try:
-        resp = requests.get(url, timeout=30)
+        resp = requests.get(url, timeout=8)
         return resp.content if resp.status_code == 200 else None
     except Exception:
         return None

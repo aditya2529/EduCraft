@@ -83,9 +83,13 @@ def _notes(slide, text):
     slide.notes_slide.notes_text_frame.text = text
 
 
-def _add_bg_image(slide, img_bytes: bytes):
-    """Stretch photo to fill the entire slide (must be added before other shapes)."""
-    slide.shapes.add_picture(io.BytesIO(img_bytes), 0, 0, SLIDE_W, SLIDE_H)
+def _add_bg_image(slide, img_bytes: bytes) -> bool:
+    """Stretch photo to fill the entire slide. Returns True on success."""
+    try:
+        slide.shapes.add_picture(io.BytesIO(img_bytes), 0, 0, SLIDE_W, SLIDE_H)
+        return True
+    except Exception:
+        return False
 
 
 def _add_overlay(slide, color: RGBColor, opacity_pct: int):
@@ -109,8 +113,8 @@ TITLE_H   = Inches(1.7)   # fixed height for title band — never overlaps bulle
 
 def _formal_cover(prs, sd, img_bytes=None):
     slide = _blank(prs)
-    if img_bytes:
-        _add_bg_image(slide, img_bytes)
+    bg_ok = img_bytes and _add_bg_image(slide, img_bytes)
+    if bg_ok:
         _add_overlay(slide, NAVY, 65)      # dark navy tint — photo shows subtly
     else:
         _rect(slide, 0, 0, SLIDE_W, SLIDE_H, NAVY)
@@ -233,8 +237,8 @@ HEADER_H = Inches(2.2)
 
 def _fun_cover(prs, sd, img_bytes=None):
     slide = _blank(prs)
-    if img_bytes:
-        _add_bg_image(slide, img_bytes)
+    bg_ok = img_bytes and _add_bg_image(slide, img_bytes)
+    if bg_ok:
         _add_overlay(slide, DARK, 55)      # semi-transparent dark — photo glows through
     else:
         _rect(slide, 0, 0, SLIDE_W, SLIDE_H, DARK)
@@ -331,8 +335,8 @@ BILLBOARD_H = Inches(1.9)
 
 def _simple_cover(prs, sd, img_bytes=None):
     slide = _blank(prs)
-    if img_bytes:
-        _add_bg_image(slide, img_bytes)
+    bg_ok = img_bytes and _add_bg_image(slide, img_bytes)
+    if bg_ok:
         _add_overlay(slide, WHITE, 72)     # light white wash — airy, clean look
     else:
         _rect(slide, 0, 0, SLIDE_W, SLIDE_H, WHITE)
