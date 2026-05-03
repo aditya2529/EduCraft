@@ -647,20 +647,28 @@ with tab1:
     # Phase 2: button is disabled — do the actual generation
     if st.session_state.pres_generating:
         p = st.session_state.pres_params
+        _status = st.empty()
+        def _pres_retry(attempt, wait):
+            _status.warning(
+                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
+                f"(attempt {attempt} of 3)..."
+            )
         try:
-            with st.spinner("Crafting your presentation and generating a cover photo... ~20 seconds"):
-                pptx_bytes = generate_presentation(
-                    topic=p["topic"], grade=p["grade"], subject=p["subject"],
-                    num_slides=p["num_slides"], tone=p["tone"],
-                    api_key=groq_key,
-                    unsplash_key=st.session_state.unsplash_key,
-                )
+            _status.info("🎨 Crafting your presentation and generating a cover photo...")
+            pptx_bytes = generate_presentation(
+                topic=p["topic"], grade=p["grade"], subject=p["subject"],
+                num_slides=p["num_slides"], tone=p["tone"],
+                api_key=groq_key,
+                unsplash_key=st.session_state.unsplash_key,
+                on_retry=_pres_retry,
+            )
             st.session_state.pres_result = pptx_bytes
             st.session_state.pres_error = None
         except Exception as e:
             st.session_state.pres_error = _groq_error_message(e)
         finally:
             st.session_state.pres_generating = False
+            _status.empty()
         st.rerun()
 
     # Show any stored error (persists across rerun)
@@ -756,19 +764,27 @@ with tab2:
     # Phase 2: button is disabled — do the generation
     if st.session_state.lp_generating:
         p = st.session_state.lp_params
+        _lp_status = st.empty()
+        def _lp_retry(attempt, wait):
+            _lp_status.warning(
+                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
+                f"(attempt {attempt} of 3)..."
+            )
         try:
-            with st.spinner("Crafting your lesson plan... this takes about 15 seconds"):
-                pdf_bytes = generate_lesson_plan(
-                    subject=p["subject"], topic=p["topic"], grade=p["grade"],
-                    duration=p["duration"], objectives=p["objectives"],
-                    resources=p["resources"], api_key=groq_key,
-                )
+            _lp_status.info("📋 Crafting your lesson plan...")
+            pdf_bytes = generate_lesson_plan(
+                subject=p["subject"], topic=p["topic"], grade=p["grade"],
+                duration=p["duration"], objectives=p["objectives"],
+                resources=p["resources"], api_key=groq_key,
+                on_retry=_lp_retry,
+            )
             st.session_state.lp_result = pdf_bytes
             st.session_state.lp_error = None
         except Exception as e:
             st.session_state.lp_error = _groq_error_message(e)
         finally:
             st.session_state.lp_generating = False
+            _lp_status.empty()
         st.rerun()
 
     # Show any stored error (persists across rerun)

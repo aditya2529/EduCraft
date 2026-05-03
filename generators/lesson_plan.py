@@ -203,12 +203,14 @@ Return ONLY this JSON (no markdown, no text outside the braces):
 }}"""
 
 
-def generate_lesson_plan(subject, topic, grade, duration, objectives, resources, api_key):
+def generate_lesson_plan(subject, topic, grade, duration, objectives, resources,
+                         api_key, on_retry=None):
     raw  = call_groq(
         system=SYSTEM_PROMPT,
         user=_build_user_prompt(subject, topic, grade, duration, objectives, resources),
         temperature=0.4,
         api_key=api_key,
+        on_retry=on_retry,
     )
     data = parse_json_response(raw)
     return create_lesson_plan_pdf(data)

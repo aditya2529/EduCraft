@@ -530,12 +530,13 @@ Return ONLY this JSON (no markdown, no text outside the braces):
 
 
 def generate_presentation(topic, grade, subject, num_slides, tone, api_key,
-                          unsplash_key=""):
+                          unsplash_key="", on_retry=None):
     raw  = call_groq(
         system=SYSTEM_PROMPT,
         user=_build_user_prompt(topic, grade, subject, num_slides, tone),
         temperature=0.82,
         api_key=api_key,
+        on_retry=on_retry,
     )
     data = parse_json_response(raw)
     data.setdefault("tone", tone)
