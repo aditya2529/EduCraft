@@ -1,0 +1,690 @@
+import json
+import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv, set_key
+import streamlit as st
+
+# ── Bootstrap path so generators/ and utils/ are importable ───────────────────
+sys.path.insert(0, str(Path(__file__).parent))
+
+ENV_PATH = Path(__file__).parent / ".env"
+load_dotenv(ENV_PATH)
+
+# ── Page config (must be first Streamlit call) ─────────────────────────────────
+st.set_page_config(
+    page_title="EduCraft AI",
+    page_icon="🎓",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
+# ── Apple Dark Mode CSS ────────────────────────────────────────────────────────
+st.html("""
+<style>
+/* ── Base & Layout ── */
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+    background-color: #000000 !important;
+    color: #F5F5F7 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Arial, sans-serif !important;
+}
+section.main > div.block-container {
+    background-color: #000000 !important;
+    padding-top: 2rem;
+    max-width: 860px;
+}
+[data-testid="stAppViewContainer"] > section.main {
+    background-color: #000000 !important;
+}
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] > div {
+    background-color: #1C1C1E !important;
+    border-right: 1px solid #38383A !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #F5F5F7 !important;
+}
+section[data-testid="stSidebar"] .stMarkdown p {
+    color: #8E8E93 !important;
+    font-size: 0.85rem;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: #38383A !important;
+}
+section[data-testid="stSidebar"] small,
+section[data-testid="stSidebar"] .stCaption {
+    color: #636366 !important;
+}
+
+/* ── Sidebar inputs ── */
+section[data-testid="stSidebar"] input {
+    background-color: #2C2C2E !important;
+    color: #F5F5F7 !important;
+    border: 1px solid #48484A !important;
+    border-radius: 10px !important;
+}
+section[data-testid="stSidebar"] label {
+    color: #AEAEB2 !important;
+}
+
+/* ── Sidebar button ── */
+section[data-testid="stSidebar"] .stButton > button {
+    background-color: #2C2C2E !important;
+    color: #0A84FF !important;
+    border: 1.5px solid #0A84FF !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    transition: all 0.15s ease !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #0A84FF !important;
+    color: #FFFFFF !important;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px !important;
+    background-color: transparent !important;
+    border-bottom: 1px solid #38383A !important;
+    padding-bottom: 4px !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: #1C1C1E !important;
+    border-radius: 10px !important;
+    padding: 8px 22px !important;
+    border: 1px solid #38383A !important;
+    color: #AEAEB2 !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #0A84FF !important;
+    color: #FFFFFF !important;
+    border-color: #0A84FF !important;
+    font-weight: 600 !important;
+}
+[data-testid="stTabContent"] {
+    background-color: #000000 !important;
+    padding-top: 1rem;
+}
+
+/* ── Form card ── */
+div[data-testid="stForm"] {
+    background-color: #1C1C1E !important;
+    border-radius: 16px !important;
+    padding: 28px 32px !important;
+    border: 1px solid #38383A !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* ── All labels ── */
+label, .stTextInput label, .stTextArea label,
+.stSelectbox label, .stSlider label,
+div[data-testid="stForm"] label {
+    color: #AEAEB2 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.3px !important;
+    margin-bottom: 4px !important;
+}
+
+/* ── Text inputs & textareas ── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    background-color: #2C2C2E !important;
+    color: #F5F5F7 !important;
+    border: 1px solid #48484A !important;
+    border-radius: 10px !important;
+    font-size: 0.95rem !important;
+    padding: 10px 14px !important;
+}
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+    color: #636366 !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #0A84FF !important;
+    box-shadow: 0 0 0 3px rgba(10,132,255,0.2) !important;
+    outline: none !important;
+}
+
+/* ── Selectbox ── */
+.stSelectbox > div > div,
+.stSelectbox [data-baseweb="select"] > div {
+    background-color: #2C2C2E !important;
+    color: #F5F5F7 !important;
+    border: 1px solid #48484A !important;
+    border-radius: 10px !important;
+}
+.stSelectbox [data-baseweb="select"] span {
+    color: #F5F5F7 !important;
+}
+[data-baseweb="popover"] ul {
+    background-color: #2C2C2E !important;
+    border: 1px solid #48484A !important;
+    border-radius: 10px !important;
+}
+[data-baseweb="popover"] li {
+    color: #F5F5F7 !important;
+}
+[data-baseweb="popover"] li:hover {
+    background-color: #3A3A3C !important;
+}
+
+/* ── Slider ── */
+.stSlider [data-baseweb="slider"] [data-testid="stTickBarMin"],
+.stSlider [data-baseweb="slider"] [data-testid="stTickBarMax"] {
+    color: #636366 !important;
+}
+.stSlider [data-baseweb="slider"] div[role="slider"] {
+    background-color: #0A84FF !important;
+    border-color: #0A84FF !important;
+}
+
+/* ── Generate (submit) button ── */
+div[data-testid="stForm"] .stButton > button,
+div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
+    background: linear-gradient(135deg, #0A84FF 0%, #0071E3 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 13px 24px !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    margin-top: 10px !important;
+    letter-spacing: 0.3px !important;
+    box-shadow: 0 2px 12px rgba(10,132,255,0.35) !important;
+    transition: all 0.15s ease !important;
+}
+div[data-testid="stForm"] .stButton > button:hover,
+div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
+    background: linear-gradient(135deg, #1A94FF 0%, #0077ED 100%) !important;
+    box-shadow: 0 4px 20px rgba(10,132,255,0.5) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ── Download button ── */
+.stDownloadButton > button {
+    background-color: #1C1C1E !important;
+    color: #0A84FF !important;
+    border: 1.5px solid #0A84FF !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    padding: 12px 24px !important;
+    font-size: 1rem !important;
+    margin-top: 8px !important;
+    transition: all 0.15s ease !important;
+    letter-spacing: 0.3px !important;
+}
+.stDownloadButton > button:hover {
+    background-color: #0A84FF !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 16px rgba(10,132,255,0.4) !important;
+}
+
+/* ── Alerts ── */
+.stSuccess {
+    background-color: rgba(48,209,88,0.12) !important;
+    border: 1px solid rgba(48,209,88,0.3) !important;
+    border-left: 4px solid #30D158 !important;
+    border-radius: 10px !important;
+    color: #30D158 !important;
+}
+.stSuccess * { color: #30D158 !important; }
+.stError {
+    background-color: rgba(255,69,58,0.12) !important;
+    border: 1px solid rgba(255,69,58,0.3) !important;
+    border-left: 4px solid #FF453A !important;
+    border-radius: 10px !important;
+}
+.stError * { color: #FF453A !important; }
+
+/* ── Expander ── */
+[data-testid="stExpander"] {
+    background-color: #1C1C1E !important;
+    border: 1px solid #38383A !important;
+    border-radius: 12px !important;
+}
+[data-testid="stExpander"] summary {
+    color: #F5F5F7 !important;
+    font-weight: 600 !important;
+}
+[data-testid="stExpander"] p,
+[data-testid="stExpander"] li {
+    color: #AEAEB2 !important;
+}
+
+/* ── Dividers ── */
+hr { border-color: #38383A !important; }
+
+/* ── Markdown in main area ── */
+.stMarkdown h4 { color: #AEAEB2 !important; font-weight: 500 !important; font-size: 0.95rem !important; }
+.stMarkdown p  { color: #AEAEB2 !important; }
+.stMarkdown strong { color: #F5F5F7 !important; }
+
+/* ── Spinner ── */
+.stSpinner > div { border-top-color: #0A84FF !important; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1C1C1E; }
+::-webkit-scrollbar-thumb { background: #48484A; border-radius: 3px; }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+    div[data-testid="stForm"] { padding: 20px 16px !important; }
+}
+</style>
+""")
+
+# ── Lazy imports (after path setup) ───────────────────────────────────────────
+from generators.presentation import generate_presentation
+from generators.lesson_plan import generate_lesson_plan
+import groq as groq_sdk
+
+
+# ── Session state initialisation ───────────────────────────────────────────────
+if "groq_api_key" not in st.session_state:
+    st.session_state.groq_api_key = os.getenv("GROQ_API_KEY", "")
+if "unsplash_key" not in st.session_state:
+    st.session_state.unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY", "")
+
+# Generation flags + stored results
+for _k in ("pres_generating", "lp_generating"):
+    if _k not in st.session_state:
+        st.session_state[_k] = False
+for _k in ("pres_result", "lp_result", "pres_params", "lp_params"):
+    if _k not in st.session_state:
+        st.session_state[_k] = None
+
+
+# ── Sidebar ────────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## EduCraft AI")
+    st.markdown("*Your AI teaching assistant*")
+    st.divider()
+
+    groq_key = st.text_input(
+        "Groq API Key",
+        value=st.session_state.groq_api_key,
+        type="password",
+        help="Get a free key at console.groq.com — takes 30 seconds",
+        placeholder="gsk_...",
+        key="api_key_input",
+    )
+    if st.button("Save Key", use_container_width=True):
+        set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
+        load_dotenv(ENV_PATH, override=True)          # reload so os.getenv is fresh
+        st.session_state.groq_api_key = groq_key     # persist in session too
+        st.success("Key saved!")
+    # Keep session_state in sync as user types (without clicking Save)
+    st.session_state.groq_api_key = groq_key
+
+    st.divider()
+
+    with st.expander("Upgrade cover photos (optional)"):
+        st.caption("AI-generated photos are added automatically. Add an Unsplash key to use real photographs instead.")
+        unsplash_key = st.text_input(
+            "Unsplash Access Key",
+            value=st.session_state.unsplash_key,
+            type="password",
+            help="Free at unsplash.com/developers",
+            placeholder="Your Unsplash access key",
+            key="unsplash_key_input",
+        )
+        if st.button("Save Photo Key", use_container_width=True):
+            set_key(str(ENV_PATH), "UNSPLASH_ACCESS_KEY", unsplash_key)
+            load_dotenv(ENV_PATH, override=True)
+            st.session_state.unsplash_key = unsplash_key
+            st.success("Saved!")
+        st.session_state.unsplash_key = unsplash_key
+
+    st.divider()
+    st.markdown(
+        """
+**Phase 1 Features**
+- Presentation Generator (PPTX)
+- Lesson Plan Generator (PDF)
+
+Powered by Groq + Llama 3.3 70B
+"""
+    )
+    st.caption("EduCraft AI — Phase 1")
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+def _validate_key(key: str) -> bool:
+    if not key or not key.strip():
+        st.error(
+            "Please enter your Groq API key in the sidebar.  \n"
+            "Get one free at [console.groq.com](https://console.groq.com)."
+        )
+        return False
+    return True
+
+
+def _validate_fields(**fields) -> bool:
+    missing = [label for label, val in fields.items() if not str(val).strip()]
+    if missing:
+        st.error(f"Please fill in: **{', '.join(missing)}**")
+        return False
+    return True
+
+
+def _handle_groq_error(e: Exception):
+    if isinstance(e, groq_sdk.AuthenticationError):
+        st.error("Invalid API key. Please check your Groq key in the sidebar.")
+    elif isinstance(e, groq_sdk.RateLimitError):
+        st.error("Rate limit reached. Wait a moment and try again — Groq's free tier resets quickly.")
+    elif isinstance(e, json.JSONDecodeError):
+        st.error("The AI returned an unexpected response. Please try again — this is usually a one-time issue.")
+    else:
+        st.error(f"Something went wrong. Please check your connection and try again.")
+
+
+# ── Main UI ────────────────────────────────────────────────────────────────────
+st.html("""
+<div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',Arial,sans-serif;">
+
+  <!-- Hero -->
+  <div style="text-align:center; padding: 16px 0 36px 0;">
+    <div style="display:inline-block; background:linear-gradient(135deg,#0A84FF,#0071E3);
+                border-radius:20px; padding:14px 20px; margin-bottom:18px;
+                box-shadow: 0 8px 32px rgba(10,132,255,0.35);">
+      <span style="font-size:2rem; line-height:1;">🎓</span>
+    </div>
+    <h1 style="color:#F5F5F7; font-size:2.6rem; font-weight:700; margin:0 0 10px 0;
+               letter-spacing:-0.8px;">EduCraft AI</h1>
+    <p style="color:#8E8E93; font-size:1.1rem; margin:0 0 6px 0;">
+      Your AI-powered teaching assistant
+    </p>
+    <p style="color:#636366; font-size:0.92rem; margin:0;">
+      Stop spending weekends on lesson prep &mdash; let AI do it in seconds.
+    </p>
+  </div>
+
+  <!-- Problem statement -->
+  <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:16px;
+              padding:20px 24px; margin-bottom:20px; text-align:center;">
+    <p style="color:#AEAEB2; font-size:0.95rem; margin:0; line-height:1.6;">
+      Teachers spend <strong style="color:#FF9F0A;">10&ndash;15 hours every week</strong>
+      preparing slides, quizzes, and lesson plans.<br>
+      EduCraft AI cuts that to <strong style="color:#30D158;">under 30 seconds</strong>
+      &mdash; so you can focus on your students, not your screen.
+    </p>
+  </div>
+
+  <!-- Feature cards -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px;">
+
+    <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:14px; padding:20px;">
+      <div style="font-size:1.6rem; margin-bottom:10px;">📊</div>
+      <div style="color:#F5F5F7; font-weight:600; font-size:1rem; margin-bottom:6px;">
+        Presentation Generator
+      </div>
+      <div style="color:#8E8E93; font-size:0.85rem; line-height:1.5;">
+        Enter a topic &rarr; get a polished PowerPoint with cover slide, content slides,
+        speaker notes &amp; summary. Ready to present instantly.
+      </div>
+      <div style="margin-top:12px;">
+        <span style="background:rgba(10,132,255,0.15); color:#0A84FF; font-size:0.75rem;
+                     font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(10,132,255,0.3);">
+          .pptx download
+        </span>
+      </div>
+    </div>
+
+    <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:14px; padding:20px;">
+      <div style="font-size:1.6rem; margin-bottom:10px;">📋</div>
+      <div style="color:#F5F5F7; font-weight:600; font-size:1rem; margin-bottom:6px;">
+        Lesson Plan Generator
+      </div>
+      <div style="color:#8E8E93; font-size:0.85rem; line-height:1.5;">
+        Built on the 5E Model &amp; Bloom&rsquo;s Taxonomy. Get warm-up, activities,
+        differentiation strategies &amp; assessment in one PDF.
+      </div>
+      <div style="margin-top:12px;">
+        <span style="background:rgba(48,209,88,0.12); color:#30D158; font-size:0.75rem;
+                     font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(48,209,88,0.3);">
+          .pdf download
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- How it works -->
+  <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:14px;
+              padding:18px 24px; margin-bottom:28px;">
+    <div style="color:#AEAEB2; font-size:0.78rem; font-weight:600; letter-spacing:1px;
+                text-transform:uppercase; margin-bottom:14px;">How it works</div>
+    <div style="display:flex; gap:0; align-items:flex-start;">
+
+      <div style="flex:1; text-align:center; padding:0 8px;">
+        <div style="background:#0A84FF; color:#fff; font-weight:700; font-size:0.85rem;
+                    width:28px; height:28px; border-radius:50%; display:inline-flex;
+                    align-items:center; justify-content:center; margin-bottom:8px;">1</div>
+        <div style="color:#F5F5F7; font-size:0.85rem; font-weight:500;">Fill the form</div>
+        <div style="color:#636366; font-size:0.78rem; margin-top:3px;">Topic, grade, subject</div>
+      </div>
+
+      <div style="color:#38383A; font-size:1.2rem; padding-top:6px;">&rsaquo;</div>
+
+      <div style="flex:1; text-align:center; padding:0 8px;">
+        <div style="background:#0A84FF; color:#fff; font-weight:700; font-size:0.85rem;
+                    width:28px; height:28px; border-radius:50%; display:inline-flex;
+                    align-items:center; justify-content:center; margin-bottom:8px;">2</div>
+        <div style="color:#F5F5F7; font-size:0.85rem; font-weight:500;">Click Generate</div>
+        <div style="color:#636366; font-size:0.78rem; margin-top:3px;">AI works in ~15 sec</div>
+      </div>
+
+      <div style="color:#38383A; font-size:1.2rem; padding-top:6px;">&rsaquo;</div>
+
+      <div style="flex:1; text-align:center; padding:0 8px;">
+        <div style="background:#30D158; color:#fff; font-weight:700; font-size:0.85rem;
+                    width:28px; height:28px; border-radius:50%; display:inline-flex;
+                    align-items:center; justify-content:center; margin-bottom:8px;">3</div>
+        <div style="color:#F5F5F7; font-size:0.85rem; font-weight:500;">Download &amp; use</div>
+        <div style="color:#636366; font-size:0.78rem; margin-top:3px;">PPTX or PDF, ready to go</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Divider before tabs -->
+  <div style="color:#AEAEB2; font-size:0.78rem; font-weight:600; letter-spacing:1px;
+              text-transform:uppercase; margin-bottom:12px;">Choose a tool below</div>
+
+</div>
+""")
+
+tab1, tab2 = st.tabs(["Presentation Generator", "Lesson Plan Generator"])
+
+
+# ── Tab 1: Presentation Generator ─────────────────────────────────────────────
+with tab1:
+    st.markdown("#### Create a classroom presentation ready to download as PowerPoint")
+
+    _pres_busy = st.session_state.pres_generating
+    with st.form("presentation_form"):
+        topic = st.text_input("Topic *", placeholder="e.g. Photosynthesis, World War II, Fractions")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            grade = st.text_input("Grade / Level *", placeholder="e.g. Grade 8, Undergraduate")
+        with col2:
+            subject = st.text_input("Subject *", placeholder="e.g. Biology, History, Math")
+
+        col3, col4 = st.columns(2)
+        with col3:
+            num_slides = st.slider("Number of Slides", min_value=5, max_value=20, value=10)
+        with col4:
+            tone = st.selectbox("Tone", ["Formal", "Fun", "Simple"])
+
+        pres_submitted = st.form_submit_button(
+            "Generating presentation..." if _pres_busy else "Generate Presentation",
+            type="primary",
+            use_container_width=True,
+            disabled=_pres_busy,
+        )
+
+    # Phase 1: user clicked submit — save params, disable button, rerun
+    if pres_submitted:
+        if not _validate_key(groq_key):
+            st.stop()
+        if not _validate_fields(Topic=topic, **{"Grade/Level": grade}, Subject=subject):
+            st.stop()
+        st.session_state.pres_params = dict(
+            topic=topic, grade=grade, subject=subject,
+            num_slides=num_slides, tone=tone,
+        )
+        st.session_state.pres_generating = True
+        st.session_state.pres_result = None
+        st.rerun()
+
+    # Phase 2: button is disabled — do the actual generation
+    if st.session_state.pres_generating:
+        p = st.session_state.pres_params
+        try:
+            with st.spinner("Crafting your presentation and generating a cover photo... ~20 seconds"):
+                pptx_bytes = generate_presentation(
+                    topic=p["topic"], grade=p["grade"], subject=p["subject"],
+                    num_slides=p["num_slides"], tone=p["tone"],
+                    api_key=groq_key,
+                    unsplash_key=st.session_state.unsplash_key,
+                )
+            st.session_state.pres_result = pptx_bytes
+        except Exception as e:
+            _handle_groq_error(e)
+        finally:
+            st.session_state.pres_generating = False
+        st.rerun()
+
+    # Phase 3: show result
+    if st.session_state.pres_result:
+        p = st.session_state.pres_params
+        st.success("Your presentation is ready!")
+        with st.expander("What was generated", expanded=True):
+            st.markdown(
+                f"**{p['num_slides']} slides** on *{p['topic']}* for **{p['grade']}** — "
+                f"{p['subject']} | Tone: {p['tone']}"
+            )
+            st.markdown("Download the file below and open it in PowerPoint or Google Slides.")
+        filename = f"{p['topic'].replace(' ', '_')}_presentation.pptx"
+        st.download_button(
+            label="Download PowerPoint (.pptx)",
+            data=st.session_state.pres_result,
+            file_name=filename,
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True,
+        )
+
+
+# ── Tab 2: Lesson Plan Generator ──────────────────────────────────────────────
+with tab2:
+    st.markdown("#### Create a full lesson plan based on the 5E Model and Bloom's Taxonomy")
+
+    _lp_busy = st.session_state.lp_generating
+    with st.form("lesson_plan_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            lp_subject = st.text_input("Subject *", placeholder="e.g. Mathematics")
+        with col2:
+            lp_topic = st.text_input("Topic *", placeholder="e.g. Quadratic Equations")
+
+        col3, col4 = st.columns(2)
+        with col3:
+            lp_grade = st.text_input("Grade / Level *", placeholder="e.g. Grade 10")
+        with col4:
+            lp_duration = st.selectbox(
+                "Duration",
+                [30, 45, 60, 90],
+                index=1,
+                format_func=lambda x: f"{x} minutes",
+            )
+
+        lp_objectives = st.text_area(
+            "Learning Objectives (optional)",
+            placeholder=(
+                "e.g. Students will be able to solve quadratic equations using factoring\n"
+                "Leave blank and AI will design objectives for you."
+            ),
+            height=90,
+        )
+
+        lp_resources = st.selectbox(
+            "Available Resources",
+            [
+                "Whiteboard only",
+                "Whiteboard + Projector",
+                "Full tech (projector, computers, internet)",
+                "None",
+            ],
+        )
+
+        lp_submitted = st.form_submit_button(
+            "Generating lesson plan..." if _lp_busy else "Generate Lesson Plan",
+            type="primary",
+            use_container_width=True,
+            disabled=_lp_busy,
+        )
+
+    # Phase 1: save params, disable button, rerun
+    if lp_submitted:
+        if not _validate_key(groq_key):
+            st.stop()
+        if not _validate_fields(Subject=lp_subject, Topic=lp_topic, **{"Grade/Level": lp_grade}):
+            st.stop()
+        st.session_state.lp_params = dict(
+            subject=lp_subject, topic=lp_topic, grade=lp_grade,
+            duration=lp_duration, objectives=lp_objectives, resources=lp_resources,
+        )
+        st.session_state.lp_generating = True
+        st.session_state.lp_result = None
+        st.rerun()
+
+    # Phase 2: button is disabled — do the generation
+    if st.session_state.lp_generating:
+        p = st.session_state.lp_params
+        try:
+            with st.spinner("Crafting your lesson plan... this takes about 15 seconds"):
+                pdf_bytes = generate_lesson_plan(
+                    subject=p["subject"], topic=p["topic"], grade=p["grade"],
+                    duration=p["duration"], objectives=p["objectives"],
+                    resources=p["resources"], api_key=groq_key,
+                )
+            st.session_state.lp_result = pdf_bytes
+        except Exception as e:
+            _handle_groq_error(e)
+        finally:
+            st.session_state.lp_generating = False
+        st.rerun()
+
+    # Phase 3: show result
+    if st.session_state.lp_result:
+        p = st.session_state.lp_params
+        st.success("Your lesson plan is ready!")
+        with st.expander("What was generated", expanded=True):
+            st.markdown(
+                f"**{p['duration']}-minute lesson** on *{p['topic']}* for **{p['grade']}** — {p['subject']}"
+            )
+            st.markdown(
+                "Includes 5E sections (Engage → Explore → Explain → Elaborate → Evaluate), "
+                "differentiation strategies, and optional homework."
+            )
+        filename = f"{p['topic'].replace(' ', '_')}_lesson_plan.pdf"
+        st.download_button(
+            label="Download Lesson Plan (PDF)",
+            data=st.session_state.lp_result,
+            file_name=filename,
+            mime="application/pdf",
+            use_container_width=True,
+        )
