@@ -60,10 +60,30 @@ def _subject_strategy(subject: str) -> str:
 
 
 # ── Grade-level calibration ────────────────────────────────────────────────────
+import re as _re
+
+def _is_young_learner(grade: str) -> bool:
+    g = grade.lower()
+    if any(x in g for x in ["primary", "elementary", "junior", "kindergarten", "prep"]):
+        return True
+    nums = _re.findall(r'\d+', g)
+    return bool(nums and all(int(n) <= 5 for n in nums))
+
 def _grade_calibration(grade: str) -> str:
     g = grade.lower()
-    if any(x in g for x in ["1","2","3","4","5","primary","elementary","junior"]):
-        return "Age 6-11. Use short sentences (under 12 words). Concrete objects and characters. Storytelling frame. Avoid abstractions — use physical analogies. Vocabulary: everyday words only, one new term per slide max."
+    if _is_young_learner(grade):
+        return """Age 6-11. CRITICAL RULES — these OVERRIDE ALL TONE RULES for vocabulary and complexity:
+- Maximum sentence length: 10 words per bullet. Count every word.
+- BANNED WORDS (too abstract for this age): quantitative, analytical, critical thinking, data analysis,
+  volume, cross-cultural, representations, methodology, differentiated instruction, estimation, trajectory,
+  algorithm, hypothesis, correlation, socioeconomic, discourse, paradigm. Replace with a concrete object or action.
+- Every concept MUST be shown with a physical, touchable example: cookies, apples, toy cars, fingers, blocks.
+- Storytelling frame: use "imagine", "picture this", "let's pretend" — make it a mini-story, not a lecture.
+- ONE new word per slide, maximum. Define it immediately in plain language.
+- Slide themes must be concrete and age-appropriate: NO "data analysis", NO "cross-cultural perspectives",
+  NO "critical thinking" as a slide topic. Use: counting games, real objects, skip counting, drawing arrays,
+  sharing equally, everyday shopping/cooking scenarios.
+- Speaker notes: suggest a hands-on activity (use blocks, draw on paper, act it out)."""
     if any(x in g for x in ["6","7","8","middle","intermediate"]):
         return "Age 11-14. Students can handle abstractions IF anchored to concrete examples first. Use 'bridging' — familiar concept → new concept. Introduce 2-3 subject-specific terms per slide, define them in context. Short punchy explanations."
     if any(x in g for x in ["9","10","11","12","high","secondary","gcse","igcse"]):
@@ -71,6 +91,20 @@ def _grade_calibration(grade: str) -> str:
     if any(x in g for x in ["college","university","undergraduate","graduate","degree","bachelor","master"]):
         return "University level. Use discipline-specific vocabulary without defining basics. Engage with genuine complexity and nuance — avoid oversimplification. Reference seminal papers, theorists, or debates in the field. Speaker notes can reference further reading."
     return "Calibrate language and complexity to the stated grade. Use grade-appropriate vocabulary and example contexts."
+
+
+_YOUNG_LEARNER_ANGLES = """
+Angle bank for YOUNG LEARNERS (use only these — adult angles like 'data analysis' are banned):
+  → Real objects: show the concept using cookies, apples, toy cars, fingers, blocks, sticker sheets
+  → A relatable story: a character (child/animal) encounters the concept in daily life
+  → Skip counting / pattern spotting: 2, 4, 6, 8 — look, there's a pattern!
+  → Drawing it: arrays of dots, rows of stickers, number lines with hops
+  → Sharing equally: dividing sweets among friends introduces the inverse
+  → Song or chant: rhythm helps memorise (times tables songs, clapping patterns)
+  → Hands-on activity: what the class will DO (act it out, use manipulatives)
+  → The "aha" moment: the single most surprising or delightful fact for this age
+  → Common confusion: the one thing kids always get wrong, corrected gently
+  → Real-life spotting: where do you see this TODAY? (eggs in a carton, chairs in rows)"""
 
 
 # ── Tone rules ─────────────────────────────────────────────────────────────────
@@ -126,38 +160,8 @@ def _build_user_prompt(topic, grade, subject, num_slides, tone):
     subject_tip = _subject_strategy(subject)
     grade_tip   = _grade_calibration(grade)
     n_content   = num_slides - 2   # slides 2 through N-1
-
-    return f"""Create an ELITE-QUALITY {num_slides}-slide presentation on the following:
-
-Topic:        {topic}
-Subject:      {subject}
-Grade/Level:  {grade}
-Tone:         {tone}
-
-━━━ SUBJECT PEDAGOGY ━━━
-{subject_tip}
-
-━━━ GRADE CALIBRATION ━━━
-{grade_tip}
-
-━━━ TONE REQUIREMENT ━━━
-{tone_rules}
-
-━━━ STEP 1 — COMMIT TO YOUR SLIDE PLAN (output this in JSON first) ━━━
-Your JSON must include a "slide_plan" array as the FIRST field.
-List every content slide (slides 2 to {num_slides - 1}) as a one-line theme description.
-This locks you into {n_content} genuinely distinct angles BEFORE you write any bullets.
-
-Rules for your plan:
-  ✓ Every slide covers a different dimension: neuroscience, business model, cultural impact,
-    historical context, individual psychology, societal consequences, ethics, solutions, data, human story, misconceptions — pick the most relevant angles for THIS topic.
-  ✗ BANNED PATTERN — "[Institution/Person] Can Help [Solve Problem]":
-    If slides 6, 7, 8, and 9 all follow "X can help prevent Y" or "Z plays a role in Y",
-    you have failed. Stakeholder solutions is ONE angle, not four slides.
-  ✗ No two slides may share the same theme, even with different wording.
-  ✗ Every theme in slide_plan must map to a slide with a genuinely DIFFERENT sub-topic.
-
-Diverse angle bank (use what fits — do not just reuse this list verbatim):
+    young       = _is_young_learner(grade)
+    angle_bank  = _YOUNG_LEARNER_ANGLES if young else """Diverse angle bank (use what fits — do not just reuse this list verbatim):
   → The biological/neurological mechanism
   → Who profits and how the system is designed
   → The human cost (a real person's story)
@@ -169,7 +173,47 @@ Diverse angle bank (use what fits — do not just reuse this list verbatim):
   → What the science says vs. what society does
   → How young people specifically are affected
   → What effective solutions look like (just ONE slide for this)
-  → The future trajectory
+  → The future trajectory"""
+    grade_override = """
+⚠️  GRADE OVERRIDE — READ BEFORE WRITING A SINGLE WORD:
+This presentation is for young learners (age 6-11). The grade calibration rules OVERRIDE
+the tone rules for vocabulary and complexity. "Formal" does NOT mean university-level
+language — it means structured and clear. A 6-year-old cannot process "quantitative
+reasoning", "cross-cultural representations", or "data analysis". Every bullet must
+be understandable to a child who has just learned to read. If a parent couldn't explain
+it to their child at bedtime using only everyday words, rewrite it.
+""" if young else ""
+
+    return f"""Create an ELITE-QUALITY {num_slides}-slide presentation on the following:
+
+Topic:        {topic}
+Subject:      {subject}
+Grade/Level:  {grade}
+Tone:         {tone}
+
+━━━ SUBJECT PEDAGOGY ━━━
+{subject_tip}
+
+{grade_override}━━━ GRADE CALIBRATION ━━━
+{grade_tip}
+
+━━━ TONE REQUIREMENT ━━━
+{tone_rules}
+
+━━━ STEP 1 — COMMIT TO YOUR SLIDE PLAN (output this in JSON first) ━━━
+Your JSON must include a "slide_plan" array as the FIRST field.
+List every content slide (slides 2 to {num_slides - 1}) as a one-line theme description.
+This locks you into {n_content} genuinely distinct angles BEFORE you write any bullets.
+
+Rules for your plan:
+  ✓ Every slide covers a different dimension — choose from the angle bank below.
+  ✗ BANNED PATTERN — "[Institution/Person] Can Help [Solve Problem]":
+    If slides 6, 7, 8, and 9 all follow "X can help prevent Y" or "Z plays a role in Y",
+    you have failed. Stakeholder solutions is ONE angle, not four slides.
+  ✗ No two slides may share the same theme, even with different wording.
+  ✗ Every theme in slide_plan must map to a slide with a genuinely DIFFERENT sub-topic.
+
+{angle_bank}
 
 ━━━ STEP 2 — BANNED TITLE FORMATS ━━━
 These formats are lazy and forbidden in ALL tones:
@@ -217,6 +261,7 @@ Slide {num_slides} — slide_type "summary":
 [ ] Is every named source, event, statistic, and person real? → If unsure, drop the citation, keep the fact.
 [ ] Does each slide cover a different angle than every other slide? → Check against slide_plan.
 [ ] Do any 4 consecutive slides follow "[X] Can Help [Y]"? → If yes, rewrite at least 3 of them.
+[ ] Young learners: does ANY bullet contain a banned abstract word (quantitative, analytical, cross-cultural, data analysis, etc.)? → Replace with a concrete object or action.
 
 Return ONLY this JSON (no markdown, no text outside the braces):
 {{
