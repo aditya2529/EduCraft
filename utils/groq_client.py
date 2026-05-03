@@ -3,7 +3,7 @@ import json
 import time
 from groq import Groq, RateLimitError
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "llama-3.1-8b-instant"   # 20,000 TPM free tier (vs 6,000 for 70b)
 MAX_RETRIES = 3
 RETRY_WAIT  = 62   # seconds — Groq's free tier resets every 60s
 
