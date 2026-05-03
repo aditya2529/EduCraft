@@ -271,32 +271,82 @@ TONE = SIMPLE. Every word must meet this standard:
 }
 
 
-def _build_user_prompt(topic, grade, subject, num_slides, tone):
-    tone_rules  = _TONE_RULES.get(tone, _TONE_RULES["Formal"])
-    subject_tip = _subject_strategy(subject)
-    grade_tip   = _grade_calibration(grade)
-    n_content   = num_slides - 2
-    band        = _grade_band(grade)
-    angle_bank  = _ANGLES.get(band, _ANGLES["unknown"])
-    young       = band == "primary"
-    grade_override = """
-⚠️  GRADE OVERRIDE — READ BEFORE WRITING A SINGLE WORD:
-This presentation is for young learners (age 6-11). The grade calibration rules OVERRIDE
-the tone rules for vocabulary AND for content depth. "Formal" does NOT mean university-level
-language — it means structured and clear. A 6-year-old cannot process "quantitative reasoning",
-"cross-cultural representations", or "data analysis". Every bullet must be explainable by a
-parent to their child at bedtime using only everyday words. The SLIDE THEMES themselves must
-be introductory and concrete — not the same sub-topics you would teach to a 16-year-old.
-""" if young else f"""
-⚠️  CONTENT DEPTH REQUIREMENT — NON-NEGOTIABLE:
-The slide themes must match what students at {grade} are actually taught in school.
-Do NOT teach content from a different grade level — not simpler, not harder.
-A Grade 6 presentation on photosynthesis covers: light reaction basics, chlorophyll, glucose,
-    simple equations — NOT university biochemistry, NOT primary-school "plants eat sunlight".
-A Grade 12 presentation on photosynthesis covers: Calvin cycle, Z-scheme, electron transport,
-    ATP synthesis — NOT "plants need sunlight to grow".
-Apply this same grade-precision to the topic "{topic}".
+def _grade_curriculum_note(grade: str, topic: str, subject: str) -> str:
+    """
+    Tells the AI to use its curriculum knowledge for the EXACT grade,
+    not just the grade band. Includes a same-topic cross-grade example
+    so the AI understands the expected depth difference.
+    """
+    band = _grade_band(grade)
+
+    # Cross-grade examples that make the depth difference concrete
+    examples = {
+        "primary": f"""
+EXACT GRADE MATTERS — Grade 1 and Grade 5 are both primary, but their curricula are worlds apart:
+  • Grade 1 Multiplication: equal groups of objects, skip counting by 2s and 5s, arrays up to 5×5.
+  • Grade 3 Multiplication: full times tables 1-10, repeated addition, simple word problems.
+  • Grade 5 Multiplication: multi-digit numbers, multiplying fractions and decimals, area models.
+
+You are writing for {grade}. Use your knowledge of what is ACTUALLY on the {grade} curriculum
+for {subject}. Do not teach Grade 1 content to Grade 5, or Grade 5 content to Grade 1.""",
+
+        "middle": f"""
+EXACT GRADE MATTERS — Grade 6 and Grade 8 are both middle school, but their curricula differ significantly:
+  • Grade 6 Maths: ratios, percentages, negative numbers, area of basic shapes.
+  • Grade 7 Maths: algebraic expressions, linear equations, proportional reasoning.
+  • Grade 8 Maths: simultaneous equations, Pythagoras, quadratics introduction, transformations.
+
+You are writing for {grade}. Use your knowledge of what is ACTUALLY on the {grade} curriculum
+for {subject}. Do not write generic middle-school content — target exactly {grade}.""",
+
+        "high": f"""
+EXACT GRADE MATTERS — Grade 9 and Grade 12 are both high school, but their curricula differ enormously:
+  • Grade 9 Maths: linear functions, basic trigonometry, quadratic equations, coordinate geometry.
+  • Grade 10 Maths: quadratic functions, circle geometry, simultaneous equations, statistics.
+  • Grade 11 Maths: polynomials, exponential functions, probability, sequences and series.
+  • Grade 12 Maths: calculus (differentiation & integration), complex numbers, matrices, proofs.
+
+You are writing for {grade}. Use your knowledge of what is ACTUALLY on the {grade} curriculum
+for {subject}. Do not blend grade levels — every slide theme must be squarely in {grade} territory.""",
+
+        "university": f"""
+EXACT LEVEL MATTERS — a first-year undergraduate and a PhD student cover entirely different material
+even on the same topic. You are writing for {grade}. Target the precise level and depth expected
+at that stage: foundational courses if Year 1, specialised theory and research engagement if postgraduate.""",
+
+        "unknown": f"""
+You are writing for {grade}. Use your knowledge of what is ACTUALLY taught at {grade} level
+in standard curricula worldwide for {subject}. Calibrate the sub-topics, depth, and terminology
+to precisely match what a student at {grade} would be expected to know and learn.""",
+    }
+
+    return f"""
+━━━ EXACT GRADE CURRICULUM TARGETING ━━━
+{examples.get(band, examples["unknown"])}
+
+SAME TOPIC, DIFFERENT GRADES — to make this concrete for "{topic}" in {subject}:
+Think about how a textbook written for {grade} would cover "{topic}". What chapter headings
+would it use? What prior knowledge does it assume? What comes next in the sequence?
+Those chapter headings are your slide themes. A textbook for a different grade would have
+DIFFERENT chapter headings — so should your slide_plan.
 """
+
+    tone_rules      = _TONE_RULES.get(tone, _TONE_RULES["Formal"])
+    subject_tip     = _subject_strategy(subject)
+    grade_tip       = _grade_calibration(grade)
+    n_content       = num_slides - 2
+    band            = _grade_band(grade)
+    angle_bank      = _ANGLES.get(band, _ANGLES["unknown"])
+    young           = band == "primary"
+    curriculum_note = _grade_curriculum_note(grade, topic, subject)
+    grade_override  = """
+⚠️  GRADE OVERRIDE — READ BEFORE WRITING A SINGLE WORD:
+This presentation is for young learners. Grade calibration OVERRIDES tone rules for both
+vocabulary AND content depth. "Formal" means structured and clear — not academic.
+A 6-year-old cannot process "quantitative reasoning" or "data analysis".
+Every bullet must be explainable by a parent at bedtime using only everyday words.
+Slide THEMES must be introductory and concrete — not topics you'd teach a 16-year-old.
+""" if young else ""
 
     return f"""Create an ELITE-QUALITY {num_slides}-slide presentation on the following:
 
@@ -307,7 +357,7 @@ Tone:         {tone}
 
 ━━━ SUBJECT PEDAGOGY ━━━
 {subject_tip}
-
+{curriculum_note}
 {grade_override}━━━ GRADE CALIBRATION ━━━
 {grade_tip}
 
