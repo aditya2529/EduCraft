@@ -37,12 +37,9 @@ def _fetch_unsplash(query: str, api_key: str) -> bytes | None:
 def fetch_cover_image(query: str, unsplash_key: str = "") -> bytes | None:
     """Return image bytes for the cover slide.
 
-    Tries Unsplash (real photo) if a key is supplied; falls back to
-    Pollinations.ai (AI-generated, free, no key needed).
-    Returns None only if both sources fail.
+    Only fetches if an Unsplash key is supplied — avoids slow external
+    calls when no key is set. Returns None (solid colour cover) otherwise.
     """
     if unsplash_key and unsplash_key.strip():
-        img = _fetch_unsplash(query, unsplash_key.strip())
-        if img:
-            return img
-    return _fetch_pollinations(query)
+        return _fetch_unsplash(query, unsplash_key.strip())
+    return None

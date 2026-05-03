@@ -27,6 +27,7 @@ def call_groq(system: str, user: str, temperature: float, api_key: str,
                     {"role": "user",   "content": user},
                 ],
                 temperature=temperature,
+                response_format={"type": "json_object"},
             )
             return response.choices[0].message.content.strip()
 
