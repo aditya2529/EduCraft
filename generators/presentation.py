@@ -98,16 +98,30 @@ VOCABULARY:
   representations, methodology, differentiated, trajectory, algorithm, hypothesis, correlation,
   socioeconomic, discourse, paradigm, estimation (use "guess first"), abstract (use a concrete object).
 - ONE new term per slide maximum. Define it immediately in the same bullet.
+- BANNED FILLER PHRASES — these add zero value and are forbidden:
+    ✗ "It is a fun and interactive way to learn"
+    ✗ "It is a real-life application of"
+    ✗ "can help us understand the concept of"
+    ✗ "It is a visual way to represent"
+  Replace every filler phrase with a SPECIFIC FACT, NUMBER, or NAMED EXAMPLE.
 
-CONTENT DEPTH — this is what must change most:
+MANDATORY NUMBER RULE — NON-NEGOTIABLE:
+- Every bullet MUST contain at least one real number or quantity.
+- WRONG: "We can use cookies to learn about groups."
+- WRONG: "Arrays can help us understand multiplication."
+- RIGHT: "3 rows of 4 cookies = 12 cookies in total."
+- RIGHT: "Skip count by 2s: 2, 4, 6, 8 — that is the 2 times table."
+- RIGHT: "Put 5 apples in each of 3 bags — you have 15 apples."
+- A bullet with no number in it has failed. Rewrite it.
+
+CONTENT DEPTH:
 - Cover only foundational concepts the curriculum introduces at this age.
-- EVERY concept must be shown with a physical, touchable object: cookies, apples, fingers, blocks, toys.
-- NO concept should require prior knowledge beyond what a child this age has learned in school.
-- Frame everything as a mini-story or game — children learn through narrative and play.
-- Slide themes must stay at the introductory/concrete level: skip counting, arrays, equal groups,
-  real-life spotting. NOT word problems, NOT algebraic thinking, NOT abstract properties.
+- EVERY concept must be shown with a physical, touchable example WITH ACTUAL NUMBERS.
+- Frame everything as a mini-story: "Mia has 3 bags. Each bag has 4 sweets. How many sweets?"
+- Slide themes must stay concrete: skip counting, equal groups, arrays, real-life spotting.
+  NOT word problems involving unknowns, NOT algebraic thinking, NOT abstract properties.
 
-ACTIVITIES: Speaker notes must suggest a hands-on activity (blocks, drawing, acting it out, clapping)."""
+ACTIVITIES: Speaker notes must suggest a specific hands-on activity with actual numbers."""
 
     if band == "middle":
         return """Age 11-14. Content depth and vocabulary rules:
@@ -157,17 +171,32 @@ or Grade 3 content to Grade 10 students."""
 # ── Grade-appropriate angle banks ──────────────────────────────────────────────
 _ANGLES = {
     "primary": """
-Angle bank for PRIMARY (Grades 1-5) — use ONLY these; all others are age-inappropriate:
-  → Real objects: show the concept with cookies, apples, fingers, blocks, sticker sheets, toy cars
-  → A relatable story: a child or animal character encounters the concept in everyday life
-  → Skip counting / pattern spotting: notice the pattern, predict what comes next
-  → Drawing it: arrays of dots, rows of objects, number lines with hops, simple diagrams
-  → Sharing equally: divide sweets/stickers among friends to build intuition
-  → Song or chant: clapping rhythm, times-table song, call-and-response
-  → Hands-on game or activity: what the class will physically DO (not watch)
-  → The "aha" moment: the one delightful surprise appropriate for this age
-  → Common confusion: the single thing children always get wrong — corrected gently with an example
-  → Real-life spotting: where do you see this concept TODAY? (egg carton, chairs in rows, shop shelves)""",
+Angle bank for PRIMARY (Grades 1-5) — use ONLY these; all others are age-inappropriate.
+
+⚠️  CATEGORY DIVERSITY RULE: Blocks, arrays, drawing, and hands-on activities are ALL
+the same category ("visual/physical representation"). You may use AT MOST ONE slide from
+this category. The remaining slides must come from DIFFERENT categories below.
+
+Categories and angles:
+  [VISUAL/PHYSICAL — max 1 slide total from this group]:
+  → Real objects with numbers: "3 bags × 4 apples = 12 apples" using cookies, blocks, fingers
+  → Drawing arrays: dot arrays, rows of stickers, number lines — always with actual numbers
+
+  [PATTERN & COUNTING — 1 slide]:
+  → Skip counting with a specific times table: count by 3s to 30, by 5s to 50 — show the pattern
+
+  [STORY / REAL LIFE — 1 slide]:
+  → A mini word-story with a child character: Mia, Jake, or an animal solves a real problem
+  → Real-life spotting with numbers: egg carton (2×6=12), chocolate bar (4×5=20), seats in rows
+
+  [COMMON CONFUSION — 1 slide]:
+  → The one mistake children always make on this topic, corrected with a specific numbered example
+
+  [AHA MOMENT / SURPRISE — 1 slide]:
+  → The single most surprising or delightful fact for this age — must include a number
+
+  [GAME / ACTIVITY — 1 slide]:
+  → A specific game or activity the class will play, described with actual numbers involved""",
 
     "middle": """
 Angle bank for MIDDLE SCHOOL (Grades 6-8):
@@ -382,19 +411,34 @@ Rules for your plan:
 {angle_bank}
 
 ━━━ STEP 2 — BANNED TITLE FORMATS ━━━
-These formats are lazy and forbidden in ALL tones:
+These formats are lazy and forbidden in ALL tones and ALL grade levels:
+
+  ✗ "[X] Can Help [Y]"     — THE MOST COMMON FAILURE. Every slide title in the last
+                              bad presentation used this. It is BANNED. No exceptions.
+      BANNED:  "Blocks Can Help Us Understand Multiplication"
+      BANNED:  "Arrays Can Help Us Visualize Multiplication"
+      BANNED:  "Songs Can Help Us Learn Times Tables"
+      REWRITE: "3 Rows of 4 Blocks = 12 — Every Time, Without Counting"
+      REWRITE: "A 3×4 Array of Dots Shows Why Multiplication Is Just Fast Counting"
+      REWRITE: "Skip Counting by 5s Gets You to 100 in Just 20 Steps"
+
   ✗ "The X of Y"           e.g., "The History of Cricket"
   ✗ "X and Y"              e.g., "Cricket and Technology"
   ✗ "The Role of X"        e.g., "The Role of Women"
   ✗ "X: A Y Perspective"   e.g., "Cricket: A Historical View"
   ✗ "What is X?"
-  ✗ "X Can Help Y"         e.g., "Education Can Help Prevent Addiction"
   ✗ "X Is Important"
+  ✗ "Understanding X"
+  ✗ "Learning About X"
 
-Every title must stake a SPECIFIC CLAIM or reveal a SURPRISE:
-  ✓ "Your Brain Cannot Tell the Difference Between a Like and a Drug Hit"
-  ✓ "Facebook's Own Research Showed Instagram Harmed Teen Girls — and They Hid It"
-  ✓ "Germany Was Beaten by Its Own Weather, Not Just Its Enemies"
+Every title must state a SPECIFIC, SURPRISING FACT or a CONCRETE CLAIM:
+  ✓ (primary)    "3 Groups of 4 Is Always 12 — Even If You Rearrange the Groups"
+  ✓ (primary)    "Your Fingers Are a Times-Table Machine — Here Is How"
+  ✓ (secondary)  "Your Brain Cannot Tell the Difference Between a Like and a Drug Hit"
+  ✓ (secondary)  "Facebook's Own Research Showed Instagram Harmed Teen Girls — and They Hid It"
+
+TITLE SELF-CHECK: After writing each title, ask: "Does this title contain a specific
+number, fact, or surprising claim?" If NO — rewrite it before moving to the bullets.
 
 ━━━ STEP 3 — SLIDE-BY-SLIDE RULES ━━━
 Slide 1 — slide_type "cover":
@@ -428,6 +472,9 @@ Slide {num_slides} — slide_type "summary":
 [ ] Does each slide cover a different angle than every other slide? → Check against slide_plan.
 [ ] Do any 4 consecutive slides follow "[X] Can Help [Y]"? → If yes, rewrite at least 3 of them.
 [ ] Young learners: does ANY bullet contain a banned abstract word (quantitative, analytical, cross-cultural, data analysis, etc.)? → Replace with a concrete object or action.
+[ ] Young learners: does every bullet contain at least one real number or quantity? → If not, rewrite it.
+[ ] Young learners: does any bullet contain a banned filler phrase ("can help us understand", "it is a fun way", "it is a real-life application")? → Replace with a specific numbered example.
+[ ] Does any slide title contain "[X] Can Help [Y]"? → This is the most common failure. Rewrite every such title as a specific claim with a number or fact.
 
 Return ONLY this JSON (no markdown, no text outside the braces):
 {{
