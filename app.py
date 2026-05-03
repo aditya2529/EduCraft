@@ -305,11 +305,12 @@ if "groq_api_key" not in st.session_state:
 if "unsplash_key" not in st.session_state:
     st.session_state.unsplash_key = _get_secret("UNSPLASH_ACCESS_KEY")
 
-# Generation flags + stored results
+# Generation flags + stored results + error messages
 for _k in ("pres_generating", "lp_generating"):
     if _k not in st.session_state:
         st.session_state[_k] = False
-for _k in ("pres_result", "lp_result", "pres_params", "lp_params"):
+for _k in ("pres_result", "lp_result", "pres_params", "lp_params",
+           "pres_error", "lp_error"):
     if _k not in st.session_state:
         st.session_state[_k] = None
 
@@ -469,15 +470,15 @@ def _validate_inputs(topic: str, grade: str, subject: str) -> bool:
     return True
 
 
-def _handle_groq_error(e: Exception):
+def _groq_error_message(e: Exception) -> str:
     if isinstance(e, groq_sdk.AuthenticationError):
-        st.error("Invalid API key. Please check your Groq key in the sidebar.")
+        return "Invalid API key. Please check your Groq key in the sidebar."
     elif isinstance(e, groq_sdk.RateLimitError):
-        st.error("Rate limit reached. Wait a moment and try again — Groq's free tier resets quickly.")
+        return "Rate limit reached. Wait a moment and try again — Groq's free tier resets quickly."
     elif isinstance(e, json.JSONDecodeError):
-        st.error("The AI returned an unexpected response. Please try again — this is usually a one-time issue.")
+        return "The AI returned an unexpected response. Please try again — this is usually a one-time issue."
     else:
-        st.error(f"Something went wrong. Please check your connection and try again.")
+        return f"Something went wrong: {type(e).__name__}. Please check your connection and try again."
 
 
 # ── Main UI ────────────────────────────────────────────────────────────────────
@@ -640,12 +641,12 @@ with tab1:
         )
         st.session_state.pres_generating = True
         st.session_state.pres_result = None
+        st.session_state.pres_error = None
         st.rerun()
 
     # Phase 2: button is disabled — do the actual generation
     if st.session_state.pres_generating:
         p = st.session_state.pres_params
-        _pres_error = False
         try:
             with st.spinner("Crafting your presentation and generating a cover photo... ~20 seconds"):
                 pptx_bytes = generate_presentation(
@@ -655,13 +656,16 @@ with tab1:
                     unsplash_key=st.session_state.unsplash_key,
                 )
             st.session_state.pres_result = pptx_bytes
+            st.session_state.pres_error = None
         except Exception as e:
-            _handle_groq_error(e)
-            _pres_error = True
+            st.session_state.pres_error = _groq_error_message(e)
         finally:
             st.session_state.pres_generating = False
-        if not _pres_error:
-            st.rerun()
+        st.rerun()
+
+    # Show any stored error (persists across rerun)
+    if st.session_state.pres_error:
+        st.error(st.session_state.pres_error)
 
     # Phase 3: show result
     if st.session_state.pres_result:
@@ -746,12 +750,12 @@ with tab2:
         )
         st.session_state.lp_generating = True
         st.session_state.lp_result = None
+        st.session_state.lp_error = None
         st.rerun()
 
     # Phase 2: button is disabled — do the generation
     if st.session_state.lp_generating:
         p = st.session_state.lp_params
-        _lp_error = False
         try:
             with st.spinner("Crafting your lesson plan... this takes about 15 seconds"):
                 pdf_bytes = generate_lesson_plan(
@@ -760,13 +764,16 @@ with tab2:
                     resources=p["resources"], api_key=groq_key,
                 )
             st.session_state.lp_result = pdf_bytes
+            st.session_state.lp_error = None
         except Exception as e:
-            _handle_groq_error(e)
-            _lp_error = True
+            st.session_state.lp_error = _groq_error_message(e)
         finally:
             st.session_state.lp_generating = False
-        if not _lp_error:
-            st.rerun()
+        st.rerun()
+
+    # Show any stored error (persists across rerun)
+    if st.session_state.lp_error:
+        st.error(st.session_state.lp_error)
 
     # Phase 3: show result
     if st.session_state.lp_result:
