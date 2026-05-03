@@ -331,6 +331,8 @@ Those chapter headings are your slide themes. A textbook for a different grade w
 DIFFERENT chapter headings — so should your slide_plan.
 """
 
+
+def _build_user_prompt(topic, grade, subject, num_slides, tone):
     tone_rules      = _TONE_RULES.get(tone, _TONE_RULES["Formal"])
     subject_tip     = _subject_strategy(subject)
     grade_tip       = _grade_calibration(grade)
