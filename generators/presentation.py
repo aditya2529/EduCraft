@@ -59,52 +59,168 @@ def _subject_strategy(subject: str) -> str:
     return _SUBJECT_STRATEGY["default"]
 
 
-# ── Grade-level calibration ────────────────────────────────────────────────────
+# ── Grade-level detection ──────────────────────────────────────────────────────
 import re as _re
 
-def _is_young_learner(grade: str) -> bool:
+def _grade_band(grade: str) -> str:
+    """Return one of: 'primary', 'middle', 'high', 'university', 'unknown'."""
     g = grade.lower()
-    if any(x in g for x in ["primary", "elementary", "junior", "kindergarten", "prep"]):
-        return True
+    if any(x in g for x in ["primary", "elementary", "junior", "kindergarten", "prep", "k-"]):
+        return "primary"
+    if any(x in g for x in ["college", "university", "undergraduate", "graduate",
+                              "degree", "bachelor", "master", "phd"]):
+        return "university"
     nums = _re.findall(r'\d+', g)
-    return bool(nums and all(int(n) <= 5 for n in nums))
+    if nums:
+        n = int(nums[0])
+        if n <= 5:  return "primary"
+        if n <= 8:  return "middle"
+        if n <= 12: return "high"
+    if any(x in g for x in ["middle", "intermediate"]):  return "middle"
+    if any(x in g for x in ["high", "secondary", "gcse", "igcse", "a-level", "ib"]):
+        return "high"
+    return "unknown"
 
+def _is_young_learner(grade: str) -> bool:
+    return _grade_band(grade) == "primary"
+
+
+# ── Grade-level calibration (vocabulary + complexity + conceptual depth) ────────
 def _grade_calibration(grade: str) -> str:
-    g = grade.lower()
-    if _is_young_learner(grade):
-        return """Age 6-11. CRITICAL RULES — these OVERRIDE ALL TONE RULES for vocabulary and complexity:
-- Maximum sentence length: 10 words per bullet. Count every word.
-- BANNED WORDS (too abstract for this age): quantitative, analytical, critical thinking, data analysis,
-  volume, cross-cultural, representations, methodology, differentiated instruction, estimation, trajectory,
-  algorithm, hypothesis, correlation, socioeconomic, discourse, paradigm. Replace with a concrete object or action.
-- Every concept MUST be shown with a physical, touchable example: cookies, apples, toy cars, fingers, blocks.
-- Storytelling frame: use "imagine", "picture this", "let's pretend" — make it a mini-story, not a lecture.
-- ONE new word per slide, maximum. Define it immediately in plain language.
-- Slide themes must be concrete and age-appropriate: NO "data analysis", NO "cross-cultural perspectives",
-  NO "critical thinking" as a slide topic. Use: counting games, real objects, skip counting, drawing arrays,
-  sharing equally, everyday shopping/cooking scenarios.
-- Speaker notes: suggest a hands-on activity (use blocks, draw on paper, act it out)."""
-    if any(x in g for x in ["6","7","8","middle","intermediate"]):
-        return "Age 11-14. Students can handle abstractions IF anchored to concrete examples first. Use 'bridging' — familiar concept → new concept. Introduce 2-3 subject-specific terms per slide, define them in context. Short punchy explanations."
-    if any(x in g for x in ["9","10","11","12","high","secondary","gcse","igcse"]):
-        return "Age 14-18. Students can handle complexity but need signposting. Use precise terminology. Expect them to connect concepts across topics. Challenge assumptions. Include higher-order thinking prompts in speaker notes."
-    if any(x in g for x in ["college","university","undergraduate","graduate","degree","bachelor","master"]):
-        return "University level. Use discipline-specific vocabulary without defining basics. Engage with genuine complexity and nuance — avoid oversimplification. Reference seminal papers, theorists, or debates in the field. Speaker notes can reference further reading."
-    return "Calibrate language and complexity to the stated grade. Use grade-appropriate vocabulary and example contexts."
+    band = _grade_band(grade)
+
+    if band == "primary":
+        return """Age 6-11. CRITICAL RULES — these OVERRIDE ALL TONE RULES for vocabulary AND content depth:
+
+VOCABULARY:
+- Maximum 10 words per bullet. Count every word.
+- BANNED WORDS: quantitative, analytical, critical thinking, data analysis, volume, cross-cultural,
+  representations, methodology, differentiated, trajectory, algorithm, hypothesis, correlation,
+  socioeconomic, discourse, paradigm, estimation (use "guess first"), abstract (use a concrete object).
+- ONE new term per slide maximum. Define it immediately in the same bullet.
+
+CONTENT DEPTH — this is what must change most:
+- Cover only foundational concepts the curriculum introduces at this age.
+- EVERY concept must be shown with a physical, touchable object: cookies, apples, fingers, blocks, toys.
+- NO concept should require prior knowledge beyond what a child this age has learned in school.
+- Frame everything as a mini-story or game — children learn through narrative and play.
+- Slide themes must stay at the introductory/concrete level: skip counting, arrays, equal groups,
+  real-life spotting. NOT word problems, NOT algebraic thinking, NOT abstract properties.
+
+ACTIVITIES: Speaker notes must suggest a hands-on activity (blocks, drawing, acting it out, clapping)."""
+
+    if band == "middle":
+        return """Age 11-14. Content depth and vocabulary rules:
+
+CONTENT DEPTH:
+- Build on primary foundations — students know basic facts; now develop UNDERSTANDING and PROCEDURE.
+- Move from concrete to semi-abstract: use diagrams, tables, and worked examples before pure symbols.
+- Introduce 2-3 subject-specific terms per slide; define each one in plain language in context.
+- Slide themes should cover: procedures (how to do it), common errors, word problems, connections
+  between topics, and one real-world application students encounter outside school.
+- Misconceptions are common at this age — dedicate at least one slide to naming and correcting the
+  single biggest mistake students make on this topic.
+
+LANGUAGE: Short, punchy explanations. No jargon without definition. Analogies to everyday life (sports,
+games, social media, food). Students can handle "if…then" reasoning but need examples first."""
+
+    if band == "high":
+        return """Age 14-18. Content depth and vocabulary rules:
+
+CONTENT DEPTH:
+- Students have foundational knowledge — go DEEPER, not broader.
+- Each slide should advance understanding: include proofs, derivations, case studies, or exam-style
+  analysis. Not just "what" but "why it works" and "when it breaks down."
+- Slide themes should span: theoretical underpinning, worked examples at exam level, common
+  high-mark errors, connections to other topics in the curriculum, and one real-world or research link.
+- Use precise curriculum terminology correctly (e.g., for GCSE/IB/A-Level as appropriate).
+- Challenge assumptions: present a scenario where intuition fails and rigour wins.
+- Speaker notes: include a higher-order thinking question suitable for exam-preparation discussion."""
+
+    if band == "university":
+        return """University / postgraduate level. Content depth and vocabulary rules:
+
+CONTENT DEPTH:
+- Assume full discipline literacy. Do not define basic terms — use them correctly.
+- Each slide must engage with genuine complexity, nuance, or debate in the field.
+- Slide themes should include: theoretical frameworks, seminal research or thinkers, ongoing debates,
+  methodological considerations, real-world application at a professional or research level,
+  limitations of current knowledge, and connections to adjacent fields.
+- Speaker notes may reference further reading, landmark papers, or open research questions."""
+
+    return """Calibrate both language AND content depth precisely to the stated grade level.
+The slide themes themselves — not just the wording — must reflect what students at this
+exact grade are expected to know and learn. Do not teach Grade 12 content to Grade 6 students
+or Grade 3 content to Grade 10 students."""
 
 
-_YOUNG_LEARNER_ANGLES = """
-Angle bank for YOUNG LEARNERS (use only these — adult angles like 'data analysis' are banned):
-  → Real objects: show the concept using cookies, apples, toy cars, fingers, blocks, sticker sheets
-  → A relatable story: a character (child/animal) encounters the concept in daily life
-  → Skip counting / pattern spotting: 2, 4, 6, 8 — look, there's a pattern!
-  → Drawing it: arrays of dots, rows of stickers, number lines with hops
-  → Sharing equally: dividing sweets among friends introduces the inverse
-  → Song or chant: rhythm helps memorise (times tables songs, clapping patterns)
-  → Hands-on activity: what the class will DO (act it out, use manipulatives)
-  → The "aha" moment: the single most surprising or delightful fact for this age
-  → Common confusion: the one thing kids always get wrong, corrected gently
-  → Real-life spotting: where do you see this TODAY? (eggs in a carton, chairs in rows)"""
+# ── Grade-appropriate angle banks ──────────────────────────────────────────────
+_ANGLES = {
+    "primary": """
+Angle bank for PRIMARY (Grades 1-5) — use ONLY these; all others are age-inappropriate:
+  → Real objects: show the concept with cookies, apples, fingers, blocks, sticker sheets, toy cars
+  → A relatable story: a child or animal character encounters the concept in everyday life
+  → Skip counting / pattern spotting: notice the pattern, predict what comes next
+  → Drawing it: arrays of dots, rows of objects, number lines with hops, simple diagrams
+  → Sharing equally: divide sweets/stickers among friends to build intuition
+  → Song or chant: clapping rhythm, times-table song, call-and-response
+  → Hands-on game or activity: what the class will physically DO (not watch)
+  → The "aha" moment: the one delightful surprise appropriate for this age
+  → Common confusion: the single thing children always get wrong — corrected gently with an example
+  → Real-life spotting: where do you see this concept TODAY? (egg carton, chairs in rows, shop shelves)""",
+
+    "middle": """
+Angle bank for MIDDLE SCHOOL (Grades 6-8):
+  → The core procedure: step-by-step with a worked example and the "why" behind each step
+  → The biggest misconception: name it, show why it happens, correct it with a counter-example
+  → Visual model: graph, diagram, table, or number line that makes the abstract visible
+  → Real-world application students encounter this week (shopping, sport stats, cooking, maps)
+  → Connection to what they already know: how this extends a concept from primary school
+  → Word problem walkthrough: a realistic scenario solved step-by-step
+  → Common exam/test error and how to avoid it
+  → "What if…" extension: one intriguing question that leads toward the next topic
+  → Historical or "who invented this?" hook — brief, interesting, not a biography slide
+  → Pattern or shortcut: an elegant rule that makes calculation faster""",
+
+    "high": """
+Angle bank for HIGH SCHOOL (Grades 9-12):
+  → Theoretical foundation: the proof, derivation, or rigorous definition behind the concept
+  → Worked example at exam level: show method, mark scheme thinking, common mark-losing errors
+  → Conceptual pitfall: where intuition fails — a case where the naive approach gives the wrong answer
+  → Connection across the curriculum: how this topic links to another subject or module
+  → Real-world or research application at a sophisticated level (engineering, medicine, economics, law)
+  → Historical development: how the idea evolved and who the key figures were (brief, purposeful)
+  → The edge case or exception: when the rule breaks down and what that reveals
+  → Exam strategy: how to approach unseen questions on this topic under time pressure
+  → Deeper "why": the elegant insight that unifies several facts into one mental model
+  → Ethical or societal dimension (where relevant to the subject)""",
+
+    "university": """
+Angle bank for UNIVERSITY / POSTGRADUATE:
+  → Foundational theory or framework: the formal model underpinning the topic
+  → Seminal paper or thinker: who shaped this field and what they actually argued (not just their name)
+  → Current state of debate: what scholars disagree on and why it matters
+  → Methodological considerations: how we know what we know — and the limits of that knowledge
+  → Real-world or professional application at an expert level
+  → Cross-disciplinary connection: how another field challenges or enriches this one
+  → Critique of the dominant view: a well-supported counterargument
+  → Empirical evidence: what the data actually shows (with appropriate caveats)
+  → Open research question: what is genuinely unknown and how it might be investigated
+  → Ethical or policy dimension: implications for practice, regulation, or society""",
+
+    "unknown": """
+Angle bank (use what fits — do not reuse this list verbatim):
+  → The core mechanism or foundational concept
+  → The biggest misconception — and why it persists
+  → A real-world application students encounter in daily life
+  → Historical origin or how we got here
+  → A worked example or case study
+  → The human cost or benefit (a real story)
+  → The data: what the numbers actually show
+  → The ethical debate
+  → What effective solutions or approaches look like (ONE slide only)
+  → The future trajectory""",
+}
 
 
 # ── Tone rules ─────────────────────────────────────────────────────────────────
@@ -159,30 +275,28 @@ def _build_user_prompt(topic, grade, subject, num_slides, tone):
     tone_rules  = _TONE_RULES.get(tone, _TONE_RULES["Formal"])
     subject_tip = _subject_strategy(subject)
     grade_tip   = _grade_calibration(grade)
-    n_content   = num_slides - 2   # slides 2 through N-1
-    young       = _is_young_learner(grade)
-    angle_bank  = _YOUNG_LEARNER_ANGLES if young else """Diverse angle bank (use what fits — do not just reuse this list verbatim):
-  → The biological/neurological mechanism
-  → Who profits and how the system is designed
-  → The human cost (a real person's story)
-  → The data: what the numbers actually show
-  → The biggest misconception — and why it persists
-  → Historical origin or how we got here
-  → Global or cross-cultural variation
-  → The ethical debate
-  → What the science says vs. what society does
-  → How young people specifically are affected
-  → What effective solutions look like (just ONE slide for this)
-  → The future trajectory"""
+    n_content   = num_slides - 2
+    band        = _grade_band(grade)
+    angle_bank  = _ANGLES.get(band, _ANGLES["unknown"])
+    young       = band == "primary"
     grade_override = """
 ⚠️  GRADE OVERRIDE — READ BEFORE WRITING A SINGLE WORD:
 This presentation is for young learners (age 6-11). The grade calibration rules OVERRIDE
-the tone rules for vocabulary and complexity. "Formal" does NOT mean university-level
-language — it means structured and clear. A 6-year-old cannot process "quantitative
-reasoning", "cross-cultural representations", or "data analysis". Every bullet must
-be understandable to a child who has just learned to read. If a parent couldn't explain
-it to their child at bedtime using only everyday words, rewrite it.
-""" if young else ""
+the tone rules for vocabulary AND for content depth. "Formal" does NOT mean university-level
+language — it means structured and clear. A 6-year-old cannot process "quantitative reasoning",
+"cross-cultural representations", or "data analysis". Every bullet must be explainable by a
+parent to their child at bedtime using only everyday words. The SLIDE THEMES themselves must
+be introductory and concrete — not the same sub-topics you would teach to a 16-year-old.
+""" if young else f"""
+⚠️  CONTENT DEPTH REQUIREMENT — NON-NEGOTIABLE:
+The slide themes must match what students at {grade} are actually taught in school.
+Do NOT teach content from a different grade level — not simpler, not harder.
+A Grade 6 presentation on photosynthesis covers: light reaction basics, chlorophyll, glucose,
+    simple equations — NOT university biochemistry, NOT primary-school "plants eat sunlight".
+A Grade 12 presentation on photosynthesis covers: Calvin cycle, Z-scheme, electron transport,
+    ATP synthesis — NOT "plants need sunlight to grow".
+Apply this same grade-precision to the topic "{topic}".
+"""
 
     return f"""Create an ELITE-QUALITY {num_slides}-slide presentation on the following:
 
