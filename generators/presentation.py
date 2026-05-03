@@ -405,118 +405,37 @@ def _build_user_prompt(topic, grade, subject, num_slides, tone):
     young           = band == "primary"
     curriculum_note = _grade_curriculum_note(grade, topic, subject)
     grade_override  = """
-⚠️  GRADE OVERRIDE — READ BEFORE WRITING A SINGLE WORD:
-This presentation is for young learners. Grade calibration OVERRIDES tone rules for both
-vocabulary AND content depth. "Formal" means structured and clear — not academic.
-A 6-year-old cannot process "quantitative reasoning" or "data analysis".
-Every bullet must be explainable by a parent at bedtime using only everyday words.
-Slide THEMES must be introductory and concrete — not topics you'd teach a 16-year-old.
+GRADE OVERRIDE: This is for young learners. Calibration OVERRIDES tone for vocabulary and depth.
+No abstract words. Every bullet needs a real number. No filler phrases.
 """ if young else ""
 
-    return f"""Create an ELITE-QUALITY {num_slides}-slide presentation on the following:
+    return f"""Create a {num_slides}-slide presentation:
 
-Topic:        {topic}
-Subject:      {subject}
-Grade/Level:  {grade}
-Tone:         {tone}
+Topic: {topic} | Subject: {subject} | Grade: {grade} | Tone: {tone}
 
-━━━ SUBJECT PEDAGOGY ━━━
+GRADE CALIBRATION:
+{grade_tip}
+{grade_override}
+SUBJECT STRATEGY:
 {subject_tip}
 {curriculum_note}
-{grade_override}━━━ GRADE CALIBRATION ━━━
-{grade_tip}
-
-━━━ TONE REQUIREMENT ━━━
+TONE:
 {tone_rules}
 
-━━━ STEP 1 — COMMIT TO YOUR SLIDE PLAN (output this in JSON first) ━━━
-Your JSON must include a "slide_plan" array as the FIRST field.
-List every content slide (slides 2 to {num_slides - 1}) as a one-line theme description.
-This locks you into {n_content} genuinely distinct angles BEFORE you write any bullets.
-
-Rules for your plan:
-  ✓ Every slide covers a different dimension — choose from the angle bank below.
-  ✗ BANNED PATTERN — "[Institution/Person] Can Help [Solve Problem]":
-    If slides 6, 7, 8, and 9 all follow "X can help prevent Y" or "Z plays a role in Y",
-    you have failed. Stakeholder solutions is ONE angle, not four slides.
-  ✗ No two slides may share the same theme, even with different wording.
-  ✗ Every theme in slide_plan must map to a slide with a genuinely DIFFERENT sub-topic.
-
+ANGLE BANK - pick {n_content} DIFFERENT angles for content slides:
 {angle_bank}
 
-━━━ STEP 2 — BANNED TITLE FORMATS ━━━
-These formats are lazy and forbidden in ALL tones and ALL grade levels:
+TITLE RULES - every title must be a specific CLAIM or FACT. BANNED formats:
+"[X] Can Help [Y]", "The X of Y", "X and Y", "What is X?", "Understanding X", "X Is Important"
+GOOD examples: "3 Groups of 4 Is Always 12" / "Your Brain Reads Emojis Like a Human Face"
 
-  ✗ "[X] Can Help [Y]"     — THE MOST COMMON FAILURE. Every slide title in the last
-                              bad presentation used this. It is BANNED. No exceptions.
-      BANNED:  "Blocks Can Help Us Understand Multiplication"
-      BANNED:  "Arrays Can Help Us Visualize Multiplication"
-      BANNED:  "Songs Can Help Us Learn Times Tables"
-      REWRITE: "3 Rows of 4 Blocks = 12 — Every Time, Without Counting"
-      REWRITE: "A 3×4 Array of Dots Shows Why Multiplication Is Just Fast Counting"
-      REWRITE: "Skip Counting by 5s Gets You to 100 in Just 20 Steps"
+SLIDE RULES:
+- Slide 1 (cover): title = compelling hook, subtitle = biggest idea, no bullets.
+- Slides 2 to {num_slides-1} (content): title = specific claim, exactly 4 bullets each with a real number or named example, speaker_notes = 2 sentences (1 class question + 1 real-world link).
+- Slide {num_slides} (summary): title = single biggest insight (not "Key Takeaways"), 4 standalone bullets.
 
-  ✗ "The X of Y"           e.g., "The History of Cricket"
-  ✗ "X and Y"              e.g., "Cricket and Technology"
-  ✗ "The Role of X"        e.g., "The Role of Women"
-  ✗ "X: A Y Perspective"   e.g., "Cricket: A Historical View"
-  ✗ "What is X?"
-  ✗ "X Is Important"
-  ✗ "Understanding X"
-  ✗ "Learning About X"
-
-Every title must state a SPECIFIC, SURPRISING FACT or a CONCRETE CLAIM:
-  ✓ (primary)    "3 Groups of 4 Is Always 12 — Even If You Rearrange the Groups"
-  ✓ (primary)    "Your Fingers Are a Times-Table Machine — Here Is How"
-  ✓ (secondary)  "Your Brain Cannot Tell the Difference Between a Like and a Drug Hit"
-  ✓ (secondary)  "Facebook's Own Research Showed Instagram Harmed Teen Girls — and They Hid It"
-
-TITLE SELF-CHECK: After writing each title, ask: "Does this title contain a specific
-number, fact, or surprising claim?" If NO — rewrite it before moving to the bullets.
-
-━━━ STEP 3 — SLIDE-BY-SLIDE RULES ━━━
-Slide 1 — slide_type "cover":
-  • Title: A compelling hook that makes the teacher WANT to show this slide.
-  • Subtitle: One sentence — the single biggest idea of the entire topic.
-  • No bullets field.
-
-Slides 2 to {num_slides - 1} — slide_type "content":
-  • Title: A specific, insightful CLAIM (see banned formats above).
-  • Exactly 4 bullets. Each bullet must:
-      – Deliver a specific insight, real number, or named example — NOT a vague statement
-      – Connect to the real world or the student's life
-      – Pass the tone test: every single word matches the required tone
-  • speaker_notes — exactly 4 sentences:
-      1. The deeper "so what?" — why this slide matters beyond the obvious
-      2. The most common misconception students have here, and how to correct it
-      3. A question to pose to the class
-      4. A real-world connection or human story to share aloud
-
-Slide {num_slides} — slide_type "summary":
-  • Title: The SINGLE biggest insight of the whole presentation. Not "Key Takeaways". Not a colon title.
-  • 4 bullets: Each is a standalone insight a student could explain to a friend without the slides.
-
-━━━ FINAL QUALITY CHECKLIST (every bullet, every slide) ━━━
-[ ] Could this bullet appear in a generic Wikipedia summary? → REWRITE it.
-[ ] Does it contain a specific fact, number, or named example? → It must.
-[ ] Does every word match the required tone ({tone})? → Test each word.
-[ ] Simple: is every bullet 10 words or fewer? → COUNT every word.
-[ ] Fun: does every emoji appear only ONCE across the whole presentation? → Check your list.
-[ ] Is every named source, event, statistic, and person real? → If unsure, drop the citation, keep the fact.
-[ ] Does each slide cover a different angle than every other slide? → Check against slide_plan.
-[ ] Do any 4 consecutive slides follow "[X] Can Help [Y]"? → If yes, rewrite at least 3 of them.
-[ ] Young learners: does ANY bullet contain a banned abstract word (quantitative, analytical, cross-cultural, data analysis, etc.)? → Replace with a concrete object or action.
-[ ] Young learners: does every bullet contain at least one real number or quantity? → If not, rewrite it.
-[ ] Young learners: does any bullet contain a banned filler phrase ("can help us understand", "it is a fun way", "it is a real-life application")? → Replace with a specific numbered example.
-[ ] Does any slide title contain "[X] Can Help [Y]"? → This is the most common failure. Rewrite every such title as a specific claim with a number or fact.
-
-Return ONLY this JSON (no markdown, no text outside the braces):
+Return JSON only:
 {{
-  "slide_plan": [
-    "Slide 2: <one-line theme>",
-    "Slide 3: <one-line theme>",
-    "Slide {num_slides - 1}: <one-line theme>"
-  ],
   "title": "...",
   "subject": "{subject}",
   "grade": "{grade}",
