@@ -387,6 +387,88 @@ def _validate_fields(**fields) -> bool:
     return True
 
 
+import re as _re
+
+_GRADE_KEYWORDS = {
+    "grade", "year", "level", "class", "form", "primary", "secondary",
+    "elementary", "middle", "high", "junior", "senior", "undergraduate",
+    "postgraduate", "graduate", "university", "college", "kindergarten",
+    "nursery", "prep", "gcse", "igcse", "a-level", "ib", "bachelor",
+    "master", "phd", "diploma",
+}
+
+def _looks_like_real_words(text: str, min_letters: int = 2) -> bool:
+    """True if text has enough alphabetic content to be a genuine input."""
+    letters = _re.sub(r'[^a-zA-Z]', '', text)
+    return len(letters) >= min_letters
+
+def _has_vowel(text: str) -> bool:
+    """True if text contains at least one vowel — catches pure consonant mashing."""
+    return bool(_re.search(r'[aeiouAEIOU]', text))
+
+def _looks_like_grade(text: str) -> bool:
+    """True if text looks like a valid grade/level descriptor."""
+    t = text.lower().strip()
+    if _re.search(r'\d', t):        # Grade 1, Year 10, 8th grade …
+        return True
+    words = set(_re.split(r'\W+', t))
+    return bool(words & _GRADE_KEYWORDS)
+
+def _validate_inputs(topic: str, grade: str, subject: str) -> bool:
+    """Validate that topic, grade, and subject are sensible real inputs."""
+    topic   = topic.strip()
+    grade   = grade.strip()
+    subject = subject.strip()
+
+    # ── Topic ──────────────────────────────────────────────────────────────────
+    if len(topic) < 3:
+        st.error("**Topic** is too short — please be more specific, e.g. *Photosynthesis*.")
+        return False
+    if not _looks_like_real_words(topic, min_letters=2):
+        st.error(
+            "**Topic** must contain real words, e.g. *World War II*, *Fractions*, *Climate Change*."
+        )
+        return False
+    # Catch consonant-mashing (e.g. "asdfgh", "qwrtyp"):
+    # for each word longer than 3 chars, require vowel ratio >= 20% (incl. y)
+    # OR the topic contains a digit (valid for WW2, COVID19, etc.)
+    has_digit = bool(_re.search(r'\d', topic))
+    if not has_digit:
+        for word in _re.split(r'\W+', topic):
+            letters = _re.sub(r'[^a-zA-Z]', '', word)
+            vowels  = _re.sub(r'[^aeiouAEIOUyY]', '', letters)
+            if len(letters) > 3 and (len(vowels) / len(letters)) < 0.20:
+                st.error(
+                    "**Topic** doesn't look like a real topic — "
+                    "please enter something like *Photosynthesis* or *World War II*."
+                )
+                return False
+
+    # ── Subject ────────────────────────────────────────────────────────────────
+    if not _looks_like_real_words(subject, min_letters=2):
+        st.error(
+            "**Subject** doesn't look valid — please enter a school subject "
+            "e.g. *Biology*, *History*, *Mathematics*."
+        )
+        return False
+    if len(subject) > 3 and not _has_vowel(subject):
+        st.error(
+            "**Subject** doesn't look valid — please enter a school subject "
+            "e.g. *Biology*, *History*, *Mathematics*."
+        )
+        return False
+
+    # ── Grade ──────────────────────────────────────────────────────────────────
+    if not _looks_like_grade(grade):
+        st.error(
+            "**Grade / Level** doesn't look valid — please enter something like "
+            "*Grade 8*, *Year 10*, *Undergraduate*, or *GCSE*."
+        )
+        return False
+
+    return True
+
+
 def _handle_groq_error(e: Exception):
     if isinstance(e, groq_sdk.AuthenticationError):
         st.error("Invalid API key. Please check your Groq key in the sidebar.")
@@ -550,6 +632,8 @@ with tab1:
             st.stop()
         if not _validate_fields(Topic=topic, **{"Grade/Level": grade}, Subject=subject):
             st.stop()
+        if not _validate_inputs(topic, grade, subject):
+            st.stop()
         st.session_state.pres_params = dict(
             topic=topic, grade=grade, subject=subject,
             num_slides=num_slides, tone=tone,
@@ -650,6 +734,8 @@ with tab2:
         if not _validate_key(groq_key):
             st.stop()
         if not _validate_fields(Subject=lp_subject, Topic=lp_topic, **{"Grade/Level": lp_grade}):
+            st.stop()
+        if not _validate_inputs(lp_topic, lp_grade, lp_subject):
             st.stop()
         st.session_state.lp_params = dict(
             subject=lp_subject, topic=lp_topic, grade=lp_grade,
