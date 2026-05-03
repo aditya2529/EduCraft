@@ -12,6 +12,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 ENV_PATH = Path(__file__).parent / ".env"
 load_dotenv(ENV_PATH)
 
+
+def _get_secret(key: str) -> str:
+    """Check st.secrets first (Streamlit Cloud), then .env, then empty."""
+    try:
+        return st.secrets.get(key, "") or os.getenv(key, "")
+    except Exception:
+        return os.getenv(key, "")
+
 # ── Page config (must be first Streamlit call) ─────────────────────────────────
 st.set_page_config(
     page_title="EduCraft AI",
@@ -293,9 +301,9 @@ import groq as groq_sdk
 
 # ── Session state initialisation ───────────────────────────────────────────────
 if "groq_api_key" not in st.session_state:
-    st.session_state.groq_api_key = os.getenv("GROQ_API_KEY", "")
+    st.session_state.groq_api_key = _get_secret("GROQ_API_KEY")
 if "unsplash_key" not in st.session_state:
-    st.session_state.unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY", "")
+    st.session_state.unsplash_key = _get_secret("UNSPLASH_ACCESS_KEY")
 
 # Generation flags + stored results
 for _k in ("pres_generating", "lp_generating"):
