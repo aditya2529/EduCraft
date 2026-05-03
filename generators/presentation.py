@@ -90,38 +90,68 @@ def _grade_calibration(grade: str) -> str:
     band = _grade_band(grade)
 
     if band == "primary":
-        return """Age 6-11. CRITICAL RULES — these OVERRIDE ALL TONE RULES for vocabulary AND content depth:
+        # Detect specific grade number for fine-grained rules
+        nums = _re.findall(r'\d+', grade.lower())
+        grade_num = int(nums[0]) if nums else 3  # default to Grade 3 if unclear
+
+        if grade_num <= 2:
+            symbol_rule = """SYMBOL RULE FOR GRADE 1-2 — CRITICAL:
+- Do NOT use the × symbol. Grade 1-2 students have not learned it yet.
+- Use "groups of" language instead:
+    WRONG: "3 × 4 = 12"
+    RIGHT: "3 groups of 4 apples = 12 apples"
+    RIGHT: "4 bags with 2 cookies each = 8 cookies"
+- Do NOT use the word "columns". Use "rows" and "groups" only.
+- Do NOT use the word "array" without defining it as "objects in equal rows".
+- Maximum number size: stay within 5 groups of 5 = 25. No bigger."""
+        elif grade_num <= 3:
+            symbol_rule = """SYMBOL RULE FOR GRADE 3:
+- The × symbol is now introduced — use it but always show the "groups of" meaning alongside it.
+    RIGHT: "3 × 4 means 3 groups of 4 — that is 12."
+- Maximum number size: times tables up to 10×10 = 100."""
+        else:
+            symbol_rule = """SYMBOL RULE FOR GRADE 4-5:
+- Use × freely. Students know multiplication notation.
+- Include decimals and fractions in multiplication by Grade 5.
+- Maximum number size: multi-digit multiplication (e.g., 23 × 4 = 92)."""
+
+        return f"""Age 6-11. CRITICAL RULES — these OVERRIDE ALL TONE RULES for vocabulary AND content depth:
+
+{symbol_rule}
 
 VOCABULARY:
 - Maximum 10 words per bullet. Count every word.
 - BANNED WORDS: quantitative, analytical, critical thinking, data analysis, volume, cross-cultural,
   representations, methodology, differentiated, trajectory, algorithm, hypothesis, correlation,
-  socioeconomic, discourse, paradigm, estimation (use "guess first"), abstract (use a concrete object).
+  socioeconomic, discourse, paradigm. Replace with a concrete object or action.
 - ONE new term per slide maximum. Define it immediately in the same bullet.
-- BANNED FILLER PHRASES — these add zero value and are forbidden:
+- BANNED FILLER PHRASES — these add zero value and are forbidden in every bullet:
     ✗ "It is a fun and interactive way to learn"
     ✗ "It is a real-life application of"
     ✗ "can help us understand the concept of"
     ✗ "It is a visual way to represent"
-  Replace every filler phrase with a SPECIFIC FACT, NUMBER, or NAMED EXAMPLE.
+    ✗ "helps us develop a deeper understanding"
+    ✗ Any sentence that does not contain a number or named object.
 
-MANDATORY NUMBER RULE — NON-NEGOTIABLE:
-- Every bullet MUST contain at least one real number or quantity.
-- WRONG: "We can use cookies to learn about groups."
-- WRONG: "Arrays can help us understand multiplication."
-- RIGHT: "3 rows of 4 cookies = 12 cookies in total."
-- RIGHT: "Skip count by 2s: 2, 4, 6, 8 — that is the 2 times table."
-- RIGHT: "Put 5 apples in each of 3 bags — you have 15 apples."
-- A bullet with no number in it has failed. Rewrite it.
+MANDATORY NUMBER RULE — NON-NEGOTIABLE. Applies to EVERY slide including activity and mistake slides:
+- Every single bullet MUST contain at least one real number or quantity.
+- This applies to the Common Mistake slide: show the mistake WITH numbers, then correct it WITH numbers.
+    WRONG: "Some children forget to multiply the rows by the columns."
+    RIGHT: "Some children count 1,2,3...12 one by one instead of saying 3 groups of 4 = 12."
+- This applies to the Activity slide: name the specific numbers used in the activity.
+    WRONG: "Use blocks to build arrays and practice multiplication."
+    RIGHT: "Build 3 rows of 4 blocks — count them to confirm you have 12 blocks every time."
+- This applies to the Summary slide: each bullet must state a specific numbered fact, not a vague claim.
+    WRONG: "Multiplication is a fundamental concept in mathematics."
+    RIGHT: "3 groups of 4 always equals 12 — you never need to count one by one again."
 
 CONTENT DEPTH:
-- Cover only foundational concepts the curriculum introduces at this age.
-- EVERY concept must be shown with a physical, touchable example WITH ACTUAL NUMBERS.
-- Frame everything as a mini-story: "Mia has 3 bags. Each bag has 4 sweets. How many sweets?"
-- Slide themes must stay concrete: skip counting, equal groups, arrays, real-life spotting.
-  NOT word problems involving unknowns, NOT algebraic thinking, NOT abstract properties.
+- Cover only foundational concepts the curriculum introduces at this exact grade.
+- Frame everything as a mini-story with a named child: "Mia has 3 bags. Each bag has 4 sweets."
+- Slide themes must stay concrete. Use the angle bank — each slide must come from a DIFFERENT category.
 
-ACTIVITIES: Speaker notes must suggest a specific hands-on activity with actual numbers."""
+NO-REPEAT RULE: If two slides both involve arrays, real objects, or real-life scenarios,
+you have repeated the same angle. Merge them into one slide and use a different angle for the other."""
 
     if band == "middle":
         return """Age 11-14. Content depth and vocabulary rules:
@@ -312,9 +342,13 @@ def _grade_curriculum_note(grade: str, topic: str, subject: str) -> str:
     examples = {
         "primary": f"""
 EXACT GRADE MATTERS — Grade 1 and Grade 5 are both primary, but their curricula are worlds apart:
-  • Grade 1 Multiplication: equal groups of objects, skip counting by 2s and 5s, arrays up to 5×5.
-  • Grade 3 Multiplication: full times tables 1-10, repeated addition, simple word problems.
-  • Grade 5 Multiplication: multi-digit numbers, multiplying fractions and decimals, area models.
+  • Grade 1: "groups of" language only (NO × symbol), equal groups up to 5 groups of 5,
+             skip counting by 2s and 5s, simple real-life objects (cookies, fingers, toy cars).
+  • Grade 2: introduction of × symbol alongside "groups of", times tables for 2, 5, 10,
+             arrays up to 5×5, simple word problems with small numbers.
+  • Grade 3: full times tables 1-10, repeated addition, word problems, area as rows × columns.
+  • Grade 4: multi-digit multiplication, mental strategies, estimation, word problems.
+  • Grade 5: multiplying fractions and decimals, area models, multi-step word problems.
 
 You are writing for {grade}. Use your knowledge of what is ACTUALLY on the {grade} curriculum
 for {subject}. Do not teach Grade 1 content to Grade 5, or Grade 5 content to Grade 1.""",
