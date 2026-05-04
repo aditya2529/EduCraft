@@ -217,4 +217,18 @@ def generate_lesson_plan(subject, topic, grade, duration, objectives, resources,
         on_retry=on_retry,
     )
     data = parse_json_response(raw)
+
+    # Validate duration sum (allow ±3 min tolerance for rounding)
+    sections   = data.get("sections", [])
+    actual_dur = sum(s.get("duration_minutes", 0) for s in sections)
+    if sections and abs(actual_dur - duration) > 3:
+        raise ValueError(
+            f"Lesson sections sum to {actual_dur} min but {duration} min were requested. "
+            "Please try again."
+        )
+
+    # Strip blank material entries so PDF rendering never hits an IndexError
+    if "materials" in data:
+        data["materials"] = [m for m in data["materials"] if str(m).strip()]
+
     return create_lesson_plan_pdf(data)

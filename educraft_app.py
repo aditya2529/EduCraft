@@ -289,6 +289,9 @@ hr { border-color: #38383A !important; }
 /* ── Mobile ── */
 @media (max-width: 640px) {
     div[data-testid="stForm"] { padding: 20px 16px !important; }
+    /* Stack Streamlit columns vertically on narrow screens */
+    [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
+    [data-testid="stHorizontalBlock"] > div { min-width: 100% !important; }
 }
 </style>
 """)
@@ -315,6 +318,9 @@ for _k in ("pres_result", "lp_result", "pres_params", "lp_params",
            "qp_student_result", "qp_answer_key_result", "qp_params", "qp_error"):
     if _k not in st.session_state:
         st.session_state[_k] = None
+# Per-session generation counter for rate-limit awareness
+if "gen_count" not in st.session_state:
+    st.session_state.gen_count = 0
 
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -332,30 +338,32 @@ with st.sidebar:
         key="api_key_input",
     )
     if st.button("Save Key", use_container_width=True):
-        if not groq_key or not groq_key.strip():
+        _clean_key = groq_key.strip() if groq_key else ""
+        if not _clean_key:
             st.error("Please enter a key first.")
         else:
             with st.spinner("Validating key..."):
                 try:
                     import groq as _groq_sdk
-                    _test = _groq_sdk.Groq(api_key=groq_key.strip())
+                    _test = _groq_sdk.Groq(api_key=_clean_key)
                     _test.chat.completions.create(
                         model="llama-3.1-8b-instant",
                         messages=[{"role": "user", "content": "hi"}],
                         max_tokens=1,
                     )
-                    set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
+                    set_key(str(ENV_PATH), "GROQ_API_KEY", _clean_key)
                     load_dotenv(ENV_PATH, override=True)
-                    st.session_state.groq_api_key = groq_key
+                    st.session_state.groq_api_key = _clean_key
                     st.success("Key saved and verified!")
                 except _groq_sdk.AuthenticationError:
                     st.error("Invalid key — please check and try again.")
                 except Exception:
-                    # Network issue etc — save anyway
-                    set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
+                    # Network issue — save the stripped key but warn
+                    set_key(str(ENV_PATH), "GROQ_API_KEY", _clean_key)
                     load_dotenv(ENV_PATH, override=True)
-                    st.session_state.groq_api_key = groq_key
-                    st.success("Key saved! (Could not verify — check connection.)")
+                    st.session_state.groq_api_key = _clean_key
+                    st.warning("Key saved. Could not verify (network issue) — "
+                               "test it by generating something.")
     # Keep session_state in sync as user types (without clicking Save)
     st.session_state.groq_api_key = groq_key
 
@@ -381,14 +389,15 @@ with st.sidebar:
     st.divider()
     st.markdown(
         """
-**Phase 1 Features**
-- Presentation Generator (PPTX)
-- Lesson Plan Generator (PDF)
+**Features**
+- 📊 Presentation Generator (PPTX)
+- 📋 Lesson Plan Generator (PDF)
+- 📝 Question Paper Generator (PDF)
 
-Powered by Groq + Llama 3.3 70B
+Powered by Groq + Llama 3.1
 """
     )
-    st.caption("EduCraft AI — Phase 1")
+    st.caption("EduCraft AI — Phase 2")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -411,6 +420,28 @@ def _validate_fields(**fields) -> bool:
 
 
 import re as _re
+
+# ── Security helpers ───────────────────────────────────────────────────────────
+_INJ_PAT = _re.compile(
+    r'ignore\s+(all\s+)?(previous|above|prior)\s+instructions?'
+    r'|forget\s+(everything|all)'
+    r'|you\s+are\s+now\s+(an?\s+)?(AI|assistant|GPT|Claude|LLM)'
+    r'|new\s+instructions?\s*:'
+    r'|system\s+prompt'
+    r'|print\s+(your\s+)?prompt'
+    r'|act\s+as\s+(an?\s+)?(AI|assistant|GPT)',
+    _re.IGNORECASE,
+)
+
+def _sanitize(text: str) -> str:
+    """Strip obvious prompt-injection patterns and cap length to 500 chars."""
+    return _INJ_PAT.sub('', str(text)).strip()[:500]
+
+def _safe_filename(name: str) -> str:
+    """Return a filesystem-safe filename stem (no special chars, max 80)."""
+    stem = _re.sub(r'[^\w\s-]', '', str(name)).strip()
+    stem = _re.sub(r'[\s]+', '_', stem)
+    return stem[:80] or 'educraft'
 
 _GRADE_KEYWORDS = {
     "grade", "year", "level", "class", "form", "primary", "secondary",
@@ -452,15 +483,16 @@ def _validate_inputs(topic: str, grade: str, subject: str) -> bool:
             "**Topic** must contain real words, e.g. *World War II*, *Fractions*, *Climate Change*."
         )
         return False
-    # Catch consonant-mashing (e.g. "asdfgh", "qwrtyp"):
-    # for each word longer than 3 chars, require vowel ratio >= 20% (incl. y)
-    # OR the topic contains a digit (valid for WW2, COVID19, etc.)
+    # Catch obvious keyboard-mashing (e.g. "asdfgh", "qwrtyp"):
+    # A word is suspicious if it has >4 chars AND zero vowels (incl. y).
+    # Using y as a vowel + zero-vowel threshold (not ratio) avoids false
+    # positives on real English words like "rhythm", "myth", "glyph".
     has_digit = bool(_re.search(r'\d', topic))
     if not has_digit:
         for word in _re.split(r'\W+', topic):
             letters = _re.sub(r'[^a-zA-Z]', '', word)
             vowels  = _re.sub(r'[^aeiouAEIOUyY]', '', letters)
-            if len(letters) > 3 and (len(vowels) / len(letters)) < 0.20:
+            if len(letters) > 4 and len(vowels) == 0:
                 st.error(
                     "**Topic** doesn't look like a real topic — "
                     "please enter something like *Photosynthesis* or *World War II*."
@@ -536,7 +568,11 @@ st.html("""
   </div>
 
   <!-- Feature cards -->
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px;">
+  <style>
+    .ec-cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:28px; }
+    @media (max-width: 700px) { .ec-cards { grid-template-columns:1fr !important; } }
+  </style>
+  <div class="ec-cards">
 
     <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:14px; padding:20px;">
       <div style="font-size:1.6rem; margin-bottom:10px;">📊</div>
@@ -572,6 +608,23 @@ st.html("""
       </div>
     </div>
 
+    <div style="background:#1C1C1E; border:1px solid #38383A; border-radius:14px; padding:20px;">
+      <div style="font-size:1.6rem; margin-bottom:10px;">📝</div>
+      <div style="color:#F5F5F7; font-weight:600; font-size:1rem; margin-bottom:6px;">
+        Question Paper Generator
+      </div>
+      <div style="color:#8E8E93; font-size:0.85rem; line-height:1.5;">
+        MCQs, short &amp; long answers with Bloom&rsquo;s levels. Get a student paper
+        + teacher answer key in two separate PDFs.
+      </div>
+      <div style="margin-top:12px;">
+        <span style="background:rgba(175,100,235,0.15); color:#AF64EB; font-size:0.75rem;
+                     font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(175,100,235,0.3);">
+          dual .pdf download
+        </span>
+      </div>
+    </div>
+
   </div>
 
   <!-- How it works -->
@@ -596,7 +649,7 @@ st.html("""
                     width:28px; height:28px; border-radius:50%; display:inline-flex;
                     align-items:center; justify-content:center; margin-bottom:8px;">2</div>
         <div style="color:#F5F5F7; font-size:0.85rem; font-weight:500;">Click Generate</div>
-        <div style="color:#636366; font-size:0.78rem; margin-top:3px;">AI works in ~15 sec</div>
+        <div style="color:#636366; font-size:0.78rem; margin-top:3px;">AI works in 15&ndash;60 sec</div>
       </div>
 
       <div style="color:#38383A; font-size:1.2rem; padding-top:6px;">&rsaquo;</div>
@@ -651,10 +704,14 @@ with tab1:
             disabled=_pres_busy,
         )
 
-    # Phase 1: user clicked submit — save params, disable button, rerun
+    # Phase 1: user clicked submit — sanitize, validate, save params, rerun
     if pres_submitted:
         if not _validate_key(groq_key):
             st.stop()
+        # Sanitize free-text fields before validation and storage
+        topic   = _sanitize(topic)
+        grade   = _sanitize(grade)
+        subject = _sanitize(subject)
         if not _validate_fields(Topic=topic, **{"Grade/Level": grade}, Subject=subject):
             st.stop()
         if not _validate_inputs(topic, grade, subject):
@@ -672,13 +729,14 @@ with tab1:
     if st.session_state.pres_generating:
         p = st.session_state.pres_params
         _status = st.empty()
-        def _pres_retry(attempt, wait):
+        def _pres_retry(attempt, remaining):
             _status.warning(
-                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
-                f"(attempt {attempt} of 3)..."
+                f"⏳ Rate limit hit — retrying automatically in **{remaining}s** "
+                f"(attempt {attempt}/3). Please wait..."
             )
+        st.session_state.gen_count += 1
         try:
-            _status.info("🎨 Crafting your presentation...")
+            _status.info("🎨 Crafting your presentation — usually 15–30 seconds…")
             pptx_bytes = generate_presentation(
                 topic=p["topic"], grade=p["grade"], subject=p["subject"],
                 num_slides=p["num_slides"], tone=p["tone"], board=p.get("board", "CBSE"),
@@ -709,7 +767,7 @@ with tab1:
                 f"{p['subject']} | {p.get('board','CBSE')} | Tone: {p['tone']}"
             )
             st.markdown("Download the file below and open it in PowerPoint or Google Slides.")
-        filename = f"{p['topic'].replace(' ', '_')}_presentation.pptx"
+        filename = f"{_safe_filename(p['topic'])}_presentation.pptx"
         st.download_button(
             label="Download PowerPoint (.pptx)",
             data=st.session_state.pres_result,
@@ -775,10 +833,14 @@ with tab2:
             disabled=_lp_busy,
         )
 
-    # Phase 1: save params, disable button, rerun
+    # Phase 1: sanitize, validate, save params, disable button, rerun
     if lp_submitted:
         if not _validate_key(groq_key):
             st.stop()
+        lp_subject    = _sanitize(lp_subject)
+        lp_topic      = _sanitize(lp_topic)
+        lp_grade      = _sanitize(lp_grade)
+        lp_objectives = _sanitize(lp_objectives)
         if not _validate_fields(Subject=lp_subject, Topic=lp_topic, **{"Grade/Level": lp_grade}):
             st.stop()
         if not _validate_inputs(lp_topic, lp_grade, lp_subject):
@@ -797,13 +859,14 @@ with tab2:
     if st.session_state.lp_generating:
         p = st.session_state.lp_params
         _lp_status = st.empty()
-        def _lp_retry(attempt, wait):
+        def _lp_retry(attempt, remaining):
             _lp_status.warning(
-                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
-                f"(attempt {attempt} of 3)..."
+                f"⏳ Rate limit hit — retrying automatically in **{remaining}s** "
+                f"(attempt {attempt}/3). Please wait..."
             )
+        st.session_state.gen_count += 1
         try:
-            _lp_status.info("📋 Crafting your lesson plan...")
+            _lp_status.info("📋 Crafting your lesson plan — usually 15–30 seconds…")
             pdf_bytes = generate_lesson_plan(
                 subject=p["subject"], topic=p["topic"], grade=p["grade"],
                 duration=p["duration"], objectives=p["objectives"],
@@ -836,7 +899,7 @@ with tab2:
                 "Includes 5E sections (Engage → Explore → Explain → Elaborate → Evaluate), "
                 "differentiation strategies, and optional homework."
             )
-        filename = f"{p['topic'].replace(' ', '_')}_lesson_plan.pdf"
+        filename = f"{_safe_filename(p['topic'])}_lesson_plan.pdf"
         st.download_button(
             label="Download Lesson Plan (PDF)",
             data=st.session_state.lp_result,
@@ -853,7 +916,12 @@ with tab2:
 
 # ── Tab 3: Question Paper Generator ───────────────────────────────────────────
 with tab3:
-    st.markdown("#### Create a CBSE-style question paper with student version + answer key")
+    st.markdown("#### Create a curriculum-aligned question paper with student version + teacher answer key")
+
+    st.markdown(
+        "📌 *AI-generated content — verify all facts, answers, and marking schemes "
+        "before distributing to students.*"
+    )
 
     _qp_busy = st.session_state.qp_generating
     with st.form("question_paper_form"):
@@ -871,20 +939,39 @@ with tab3:
 
         col5, col6 = st.columns(2)
         with col5:
-            qp_total_marks = st.selectbox("Total Marks", [10, 20, 40, 50, 80, 100], index=2)
+            # 30 added so defaults (10+10+10=30) match the preselected total
+            qp_total_marks = st.selectbox("Total Marks", [10, 20, 25, 30, 40, 50, 80, 100], index=3)
         with col6:
             qp_difficulty = st.selectbox("Difficulty", ["Easy", "Balanced", "Hard"], index=1)
 
-        st.markdown("**Section Breakdown**")
+        st.markdown("**Section Breakdown** *(counts must add up to Total Marks)*")
         col7, col8, col9 = st.columns(3)
         with col7:
-            qp_mcq_count  = st.number_input("MCQs (1 mark each)", min_value=0, max_value=30, value=10, step=1)
+            st.markdown("**Section A — MCQ**")
+            qp_mcq_count = st.number_input(
+                "Number of MCQs (1 mark each)",
+                min_value=0, max_value=30, value=10, step=1,
+            )
         with col8:
-            qp_short_count = st.number_input("Short Ans (marks each)", min_value=0, max_value=15, value=5, step=1)
-            qp_short_marks = st.number_input("Marks per short answer", min_value=1, max_value=5, value=2, step=1)
+            st.markdown("**Section B — Short Answer**")
+            qp_short_count = st.number_input(
+                "Number of short answer questions",
+                min_value=0, max_value=15, value=5, step=1,
+            )
+            qp_short_marks = st.number_input(
+                "Marks per short answer",
+                min_value=1, max_value=5, value=2, step=1,
+            )
         with col9:
-            qp_long_count  = st.number_input("Long Ans (marks each)", min_value=0, max_value=10, value=2, step=1)
-            qp_long_marks  = st.number_input("Marks per long answer", min_value=3, max_value=10, value=5, step=1)
+            st.markdown("**Section C — Long Answer**")
+            qp_long_count = st.number_input(
+                "Number of long answer questions",
+                min_value=0, max_value=10, value=2, step=1,
+            )
+            qp_long_marks = st.number_input(
+                "Marks per long answer",
+                min_value=3, max_value=10, value=5, step=1,
+            )
 
         qp_submitted = st.form_submit_button(
             "Generating question paper..." if _qp_busy else "Generate Question Paper",
@@ -893,22 +980,50 @@ with tab3:
             disabled=_qp_busy,
         )
 
-    # Validate total marks match
+    # ── Phase 1: Validate and save params ────────────────────────────────────────
     if qp_submitted:
-        computed = qp_mcq_count * 1 + qp_short_count * qp_short_marks + qp_long_count * qp_long_marks
         if not _validate_key(groq_key):
             st.stop()
+
+        # Sanitize free-text fields
+        qp_subject = _sanitize(qp_subject)
+        qp_topic   = _sanitize(qp_topic)
+        qp_grade   = _sanitize(qp_grade)
+
         if not _validate_fields(Subject=qp_subject, Topic=qp_topic, **{"Grade/Level": qp_grade}):
             st.stop()
         if not _validate_inputs(qp_topic, qp_grade, qp_subject):
             st.stop()
+
+        # Guard: at least one question type must be selected
+        if int(qp_mcq_count) == 0 and int(qp_short_count) == 0 and int(qp_long_count) == 0:
+            st.error("Please add at least one question to the paper.")
+            st.stop()
+
+        # Guard: marks breakdown must match total marks exactly
+        computed = int(qp_mcq_count) * 1 + int(qp_short_count) * int(qp_short_marks) \
+                   + int(qp_long_count) * int(qp_long_marks)
         if computed != qp_total_marks:
-            st.warning(
-                f"⚠️ Section breakdown adds up to **{computed} marks**, "
+            st.error(
+                f"⚠️ Section breakdown adds up to **{computed} marks** "
                 f"but Total Marks is set to **{qp_total_marks}**. "
-                f"Adjust the counts or total marks so they match."
+                f"Adjust the question counts or marks so they match exactly."
             )
             st.stop()
+
+        # Guard: token cap — large papers exceed 4096 output tokens
+        _est_tokens = (int(qp_mcq_count) * 80
+                       + int(qp_short_count) * 160
+                       + int(qp_long_count)  * 320)
+        if _est_tokens > 3800:
+            st.error(
+                f"This paper is too large for one AI call "
+                f"(~{_est_tokens} tokens estimated, limit ~3 800). "
+                f"Recommended maximums: **15 MCQs, 8 short answers, 3 long answers**. "
+                f"Please reduce the question counts."
+            )
+            st.stop()
+
         st.session_state.qp_params = dict(
             subject=qp_subject, topic=qp_topic, grade=qp_grade, board=qp_board,
             total_marks=qp_total_marks, difficulty=qp_difficulty,
@@ -926,13 +1041,14 @@ with tab3:
     if st.session_state.qp_generating:
         p = st.session_state.qp_params
         _qp_status = st.empty()
-        def _qp_retry(attempt, wait):
+        def _qp_retry(attempt, remaining):
             _qp_status.warning(
-                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
-                f"(attempt {attempt} of 3)..."
+                f"⏳ Rate limit hit — retrying automatically in **{remaining}s** "
+                f"(attempt {attempt}/3). Please wait..."
             )
+        st.session_state.gen_count += 1
         try:
-            _qp_status.info("📝 Generating your question paper and answer key...")
+            _qp_status.info("📝 Generating your question paper and answer key — usually 20–60 seconds…")
             student_pdf, answer_key_pdf = generate_question_paper(
                 subject=p["subject"], topic=p["topic"], grade=p["grade"],
                 board=p["board"], total_marks=p["total_marks"],
@@ -968,7 +1084,11 @@ with tab3:
                 f"Sections: {p['mcq_count']} MCQs · {p['short_count']} Short ({p['short_marks']}m) · "
                 f"{p['long_count']} Long ({p['long_marks']}m)"
             )
-        safe_topic = p['topic'].replace(' ', '_')
+        safe_topic = _safe_filename(p['topic'])
+        st.info(
+            "📌 **Before distributing:** verify all questions, model answers, and "
+            "marking schemes for factual accuracy. AI can make errors."
+        )
         col_a, col_b = st.columns(2)
         with col_a:
             st.download_button(

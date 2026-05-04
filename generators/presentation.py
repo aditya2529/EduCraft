@@ -460,7 +460,21 @@ def generate_presentation(topic, grade, subject, num_slides, tone, board="CBSE",
         on_retry=on_retry,
     )
     data = parse_json_response(raw)
-    data.setdefault("tone", tone)
+    data.setdefault("tone",    tone)
+    data.setdefault("subject", subject)
+    data.setdefault("grade",   grade)
+
+    # Validate slide count — allow at most 1 fewer than requested
+    actual_slides = len(data.get("slides", []))
+    if actual_slides < num_slides - 1:
+        raise ValueError(
+            f"Only {actual_slides} slide(s) were generated (requested {num_slides}). "
+            "Please try again."
+        )
+
+    # Inject slide_number as fallback so slide numbers always render correctly
+    for idx, sd in enumerate(data.get("slides", []), 1):
+        sd.setdefault("slide_number", idx)
 
     img_bytes = fetch_cover_image(f"{subject} {topic}", unsplash_key)
     return create_presentation(data, img_bytes=img_bytes)

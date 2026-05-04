@@ -222,14 +222,15 @@ def generate_question_paper(subject, topic, grade, board, total_marks,
     )
     data = parse_json_response(raw)
 
-    # Validate section counts
+    # Validate section counts — zero tolerance so the PDF always matches the header
     for section in data.get("sections", []):
         stype = section.get("section_type", "")
         expected = {"mcq": mcq_count, "short": short_count, "long": long_count}.get(stype, 0)
         actual = len(section.get("questions", []))
-        if actual < expected - 1:
+        if expected > 0 and actual < expected:
             raise ValueError(
-                f"Section '{stype}' has {actual} questions but {expected} were requested."
+                f"Section '{stype}' has only {actual} question(s) but "
+                f"{expected} were requested — please try again."
             )
 
     student_pdf, answer_key_pdf = create_question_paper_pdfs(data)

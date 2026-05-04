@@ -472,56 +472,121 @@ def create_presentation(data: dict, img_bytes: bytes = None) -> bytes:
 def _safe(text: str) -> str:
     """Replace Unicode chars that break Helvetica (latin-1 only)."""
     _REPLACEMENTS = {
-        # Dashes & quotes
-        "—": "-", "–": "-",
-        "'": "'", "'": "'",
-        """: '"', """: '"',
-        # Common math/science
-        "•": "-",   # bullet
-        "²": "2",   # superscript 2
-        "³": "3",   # superscript 3
-        "…": "...", # ellipsis
-        "×": "x",   # multiplication ×
-        "÷": "/",   # division ÷
-        "±": "+/-", # ±
-        "√": "sqrt",# √
-        "∑": "sum", # ∑
-        "∫": "int", # ∫
-        "∞": "inf", # ∞
-        # Arrows
-        "→": "->",  # →
-        "←": "<-",  # ←
-        "↑": "^",   # ↑
-        "↓": "v",   # ↓
-        "⇒": "=>",  # ⇒
-        # Degree & temperature
-        "°": " deg",# °
-        # Greek letters (common in science/math)
-        "π": "pi",  # π
-        "α": "alpha",# α
-        "β": "beta", # β
-        "γ": "gamma",# γ
-        "δ": "delta",# δ
-        "θ": "theta",# θ
+        # ── Dashes & quotes ────────────────────────────────────────────────────
+        "—": "-",    # em dash —
+        "–": "-",    # en dash –
+        "‘": "'",    # left single quote '
+        "’": "'",    # right single quote / apostrophe '
+        "“": '"',    # left double quote "
+        "”": '"',    # right double quote "
+        "…": "...",  # ellipsis …
+        # ── Common math/science ────────────────────────────────────────────────
+        "•": "-",    # bullet •
+        "²": "2",    # superscript 2 ²
+        "³": "3",    # superscript 3 ³
+        "¹": "1",    # superscript 1 ¹
+        "×": "x",    # multiplication ×
+        "÷": "/",    # division ÷
+        "±": "+/-",  # plus-minus ±
+        "√": "sqrt", # √
+        "∑": "sum",  # ∑
+        "∫": "int",  # ∫
+        "∞": "inf",  # ∞
+        "≈": "~=",   # ≈
+        "≠": "!=",   # ≠
+        "≤": "<=",   # ≤
+        "≥": ">=",   # ≥
+        "∝": "~",    # proportional to ∝
+        "∴": "=>",   # therefore ∴
+        "∵": "<=",   # because ∵
+        "∈": "in",   # element of ∈
+        "∉": "not in", # not element of ∉
+        "⊆": "<=",   # subset of ⊆
+        "∪": "U",    # union ∪
+        "∩": "n",    # intersection ∩
+        "∠": "ang",  # angle ∠
+        "⊥": "_|_",  # perpendicular ⊥
+        "∣": "|",    # divides ∣
+        "∥": "||",   # parallel ∥
+        # ── Subscript digits (chemical formulas: H₂O, CO₂, CH₄) ──────────────
+        "₀": "0", "₁": "1", "₂": "2", "₃": "3",
+        "₄": "4", "₅": "5", "₆": "6", "₇": "7",
+        "₈": "8", "₉": "9",
+        # ── Superscript digits ─────────────────────────────────────────────────
+        "⁴": "4", "⁵": "5", "⁶": "6",
+        "⁷": "7", "⁸": "8", "⁹": "9",
+        # ── Arrows ────────────────────────────────────────────────────────────
+        "→": "->",   # →
+        "←": "<-",   # ←
+        "↑": "^",    # ↑
+        "↓": "v",    # ↓
+        "⇒": "=>",   # ⇒
+        "⇐": "<=",   # ⇐
+        "⇔": "<=>",  # ⇔
+        # ── Degree & temperature ───────────────────────────────────────────────
+        "°": " deg", # °
+        "℉": " F",   # ℉
+        "℃": " C",   # ℃
+        # ── Greek lowercase ────────────────────────────────────────────────────
+        "π": "pi",    # π
+        "α": "alpha", # α
+        "β": "beta",  # β
+        "γ": "gamma", # γ
+        "δ": "delta", # δ
+        "ε": "epsilon",# ε
+        "η": "eta",   # η
+        "θ": "theta", # θ
+        "κ": "kappa", # κ
         "λ": "lambda",# λ
-        "μ": "mu",  # μ
-        "σ": "sigma",# σ
-        "Ω": "Omega",# Ω
-        # Comparisons
-        "≤": "<=",  # ≤
-        "≥": ">=",  # ≥
-        "≠": "!=",  # ≠
-        "≈": "~=",  # ≈
-        # India-specific
-        "₹": "Rs.", # ₹
-        # Fractions
-        "¼": "1/4", # ¼
-        "½": "1/2", # ½
-        "¾": "3/4", # ¾
+        "μ": "mu",    # μ
+        "ν": "nu",    # ν
+        "ξ": "xi",    # ξ
+        "ρ": "rho",   # ρ
+        "σ": "sigma", # σ
+        "τ": "tau",   # τ
+        "φ": "phi",   # φ
+        "χ": "chi",   # χ
+        "ψ": "psi",   # ψ
+        "ω": "omega", # ω
+        # ── Greek uppercase ────────────────────────────────────────────────────
+        "Γ": "Gamma", # Γ
+        "Δ": "Delta", # Δ
+        "Θ": "Theta", # Θ
+        "Λ": "Lambda",# Λ
+        "Ξ": "Xi",    # Ξ
+        "Π": "Pi",    # Π
+        "Σ": "Sigma", # Σ
+        "Υ": "Upsilon",# Υ
+        "Φ": "Phi",   # Φ
+        "Ψ": "Psi",   # Ψ
+        "Ω": "Omega", # Ω
+        # ── Currency & commerce ────────────────────────────────────────────────
+        "₹": "Rs.",   # ₹ Indian Rupee
+        "€": "EUR",   # € Euro
+        "£": "GBP",   # £ Pound (in latin-1, but keep for clarity)
+        "¥": "JPY",   # ¥ Yen (in latin-1)
+        "¢": "c",     # ¢ Cent (in latin-1)
+        "™": "(TM)",  # ™ Trademark
+        "®": "(R)",   # ® Registered (in latin-1)
+        "©": "(c)",   # © Copyright (in latin-1)
+        "‰": "0/00",  # ‰ Per mille
+        # ── Fractions ──────────────────────────────────────────────────────────
+        "¼": "1/4",   # ¼
+        "½": "1/2",   # ½
+        "¾": "3/4",   # ¾
+        "⅓": "1/3",   # ⅓
+        "⅔": "2/3",   # ⅔
+        # ── Punctuation ────────────────────────────────────────────────────────
+        "′": "'",     # ′ prime
+        "″": '"',     # ″ double prime
+        "’": "'",     # right single quotation (repeated for safety)
+        "·": ".",     # · middle dot
+        "―": "-",     # ― horizontal bar
     }
     s = str(text)
     for old, new in _REPLACEMENTS.items():
         s = s.replace(old, new)
+    # Final safety net: encode to latin-1, replacing anything still unhandled
     return s.encode("latin-1", errors="replace").decode("latin-1")
 
 
@@ -767,6 +832,10 @@ def _pdf_section(pdf, section):
     bloom  = section.get("bloom_level", "")
     colour = _5e_colour(name)
 
+    # Page-break guard: never strand a section header at the bottom of a page
+    if pdf.get_y() > pdf.h - 40:
+        pdf.add_page()
+
     _section_header(pdf, name, dur, bloom, colour)
 
     # Activities
@@ -964,7 +1033,6 @@ def _qp_header(pdf, data, is_answer_key=False):
     pdf.set_xy(14, 5)
     pdf.set_font("Helvetica", "B", 16)
     pdf.set_text_color(*_QP_WH)
-    label = "ANSWER KEY" if is_answer_key else data.get("board", ""),
     if is_answer_key:
         pdf.cell(0, 7, "ANSWER KEY & MARKING SCHEME", ln=True)
     else:
@@ -990,8 +1058,13 @@ def _qp_instructions(pdf, instructions):
         return
     y = pdf.get_y()
     pdf.set_fill_color(*_QP_BG)
-    # Draw box (estimate height)
-    box_h = 6 + len(instructions) * 5.5
+    # Estimate height: 5.5 mm per line; long instructions wrap at ~80 chars/line
+    import math as _math
+    estimated_lines = sum(
+        max(1, _math.ceil(len(_safe(str(inst))) / 80))
+        for inst in instructions
+    )
+    box_h = 7 + estimated_lines * 5.5
     pdf.rect(14, y, PDF_W, box_h, "F")
     pdf.set_fill_color(*_QP_HDR)
     pdf.rect(14, y, 3, box_h, "F")
@@ -1047,6 +1120,10 @@ def _qp_mcq_student(pdf, question, colour):
     q    = _safe(question.get("question", ""))
     opts = question.get("options", [])
 
+    # Page-break guard: keep question + options together
+    if pdf.get_y() > pdf.h - 50:
+        pdf.add_page()
+
     # Question line
     pdf.set_font("Helvetica", "B", 9.5)
     pdf.set_text_color(*colour)
@@ -1059,6 +1136,7 @@ def _qp_mcq_student(pdf, question, colour):
 
     # Options in 2 columns
     opt_w = PDF_W / 2
+    oy = pdf.get_y()          # safe default so right-column items always have a Y
     for i, opt in enumerate(opts):
         col_x = 14 + (i % 2) * opt_w + 8
         if i % 2 == 0:
@@ -1108,6 +1186,10 @@ def _qp_mcq_answer(pdf, question, colour):
 
 def _qp_written_student(pdf, question, colour):
     """Short/long question — student version."""
+    # Page-break guard: keep question header + at least first line together
+    if pdf.get_y() > pdf.h - 40:
+        pdf.add_page()
+
     num   = question.get("number", "")
     q     = _safe(question.get("question", ""))
     bloom = question.get("bloom_level", "")
@@ -1133,6 +1215,10 @@ def _qp_written_student(pdf, question, colour):
 
 def _qp_written_answer(pdf, question, colour, marks_per_q):
     """Short/long question — answer key version."""
+    # Page-break guard: keep question + at least the model answer header together
+    if pdf.get_y() > pdf.h - 50:
+        pdf.add_page()
+
     num    = question.get("number", "")
     q      = _safe(question.get("question", ""))
     answer = _safe(question.get("model_answer", ""))
