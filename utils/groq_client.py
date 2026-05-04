@@ -1,13 +1,11 @@
 import re
 import json
 import time
-import httpx
 from groq import Groq, RateLimitError
 
 MODEL      = "llama-3.1-8b-instant"  # 20,000 TPM free tier (vs 6,000 for 70b)
 MAX_RETRIES = 3
 RETRY_WAIT  = 62   # seconds — Groq free tier resets every 60 s
-_API_TIMEOUT = httpx.Timeout(90.0, connect=15.0)   # 90 s read, 15 s connect
 
 
 def call_groq(system: str, user: str, temperature: float, api_key: str,
@@ -18,8 +16,13 @@ def call_groq(system: str, user: str, temperature: float, api_key: str,
     on_retry: optional callable(attempt, remaining_seconds) — called every
               second of the back-off wait so the UI can show a live countdown.
     """
-    client = Groq(api_key=api_key.strip(),
-                  http_client=httpx.Client(timeout=_API_TIMEOUT))
+    try:
+        import httpx as _httpx
+        _client_kwargs = {"http_client": _httpx.Client(timeout=_httpx.Timeout(90.0))}
+    except Exception:
+        _client_kwargs = {}          # httpx unavailable — fall back to groq default
+
+    client = Groq(api_key=api_key.strip(), **_client_kwargs)
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
