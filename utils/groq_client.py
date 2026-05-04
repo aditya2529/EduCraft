@@ -1,7 +1,7 @@
 import re
 import json
 import time
-from groq import Groq, RateLimitError
+from groq import Groq, RateLimitError, APIStatusError
 
 MODEL      = "llama-3.1-8b-instant"  # 20,000 TPM free tier (vs 6,000 for 70b)
 MAX_RETRIES = 3
@@ -9,20 +9,16 @@ RETRY_WAIT  = 62   # seconds — Groq free tier resets every 60 s
 
 
 def call_groq(system: str, user: str, temperature: float, api_key: str,
-              on_retry=None) -> str:
+              on_retry=None, max_tokens: int = 4096) -> str:
     """
-    Call the Groq API with automatic retry on rate-limit errors.
+    Call the Groq API with automatic retry on rate-limit and transient server errors.
 
     on_retry: optional callable(attempt, remaining_seconds) — called every
               second of the back-off wait so the UI can show a live countdown.
+    max_tokens: cap on output tokens; callers should pass the minimum needed to
+                avoid hitting Groq's per-request token ceiling on the free tier.
     """
-    try:
-        import httpx as _httpx
-        _client_kwargs = {"http_client": _httpx.Client(timeout=_httpx.Timeout(90.0))}
-    except Exception:
-        _client_kwargs = {}          # httpx unavailable — fall back to groq default
-
-    client = Groq(api_key=api_key.strip(), **_client_kwargs)
+    client = Groq(api_key=api_key.strip(), timeout=90.0)
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -34,18 +30,26 @@ def call_groq(system: str, user: str, temperature: float, api_key: str,
                 ],
                 temperature=temperature,
                 response_format={"type": "json_object"},
-                max_tokens=4096,
+                max_tokens=max_tokens,
             )
             return response.choices[0].message.content.strip()
 
         except RateLimitError:
             if attempt == MAX_RETRIES:
-                raise                       # give up after final attempt
-            # Count down second-by-second so the UI can show a live timer
+                raise
             for remaining in range(RETRY_WAIT, 0, -1):
                 if on_retry:
                     on_retry(attempt, remaining)
                 time.sleep(1)
+
+        except APIStatusError as e:
+            if e.status_code in (500, 502, 503, 504) and attempt < MAX_RETRIES:
+                for remaining in range(RETRY_WAIT, 0, -1):
+                    if on_retry:
+                        on_retry(attempt, remaining)
+                    time.sleep(1)
+            else:
+                raise
 
 
 def parse_json_response(raw: str) -> dict:

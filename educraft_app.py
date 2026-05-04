@@ -529,6 +529,15 @@ def _groq_error_message(e: Exception) -> str:
         return "Invalid API key. Please check your Groq key in the sidebar."
     elif isinstance(e, groq_sdk.RateLimitError):
         return "Rate limit reached. Wait a moment and try again — Groq's free tier resets quickly."
+    elif isinstance(e, groq_sdk.APIStatusError):
+        if e.status_code == 413:
+            return "Your request was too large for the AI. Try reducing the number of slides."
+        elif e.status_code in (500, 502, 503, 504):
+            return "The AI service is temporarily unavailable. Please try again in a moment."
+        else:
+            return f"The AI service returned an error (HTTP {e.status_code}). Please try again."
+    elif isinstance(e, ValueError):
+        return str(e) + " Click Generate to try again."
     elif isinstance(e, json.JSONDecodeError):
         return "The AI returned an unexpected response. Please try again — this is usually a one-time issue."
     else:

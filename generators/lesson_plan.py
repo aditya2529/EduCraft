@@ -209,12 +209,14 @@ Return ONLY this JSON (no markdown, no text outside the braces):
 
 def generate_lesson_plan(subject, topic, grade, duration, objectives, resources,
                          board="CBSE", api_key="", on_retry=None):
+    # Lesson plan output is consistent regardless of duration; 2000 tokens is ample
     raw  = call_groq(
         system=SYSTEM_PROMPT,
         user=_build_user_prompt(subject, topic, grade, duration, objectives, resources, board),
         temperature=0.4,
         api_key=api_key,
         on_retry=on_retry,
+        max_tokens=2000,
     )
     data = parse_json_response(raw)
 

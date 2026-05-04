@@ -211,6 +211,13 @@ def generate_question_paper(subject, topic, grade, board, total_marks,
                              mcq_count, short_count, long_count,
                              mcq_marks, short_marks, long_marks,
                              difficulty, api_key, on_retry=None):
+    # Budget: MCQs ~100 tokens each, short ~150, long ~350, plus JSON overhead
+    # Capped at 4000 to stay within Groq free-tier per-request ceiling
+    output_budget = min(
+        mcq_count * 100 + short_count * 150 + long_count * 350 + 600,
+        4000,
+    )
+
     raw = call_groq(
         system=SYSTEM_PROMPT,
         user=_build_prompt(subject, topic, grade, board, total_marks,
@@ -219,6 +226,7 @@ def generate_question_paper(subject, topic, grade, board, total_marks,
         temperature=0.35,
         api_key=api_key,
         on_retry=on_retry,
+        max_tokens=output_budget,
     )
     data = parse_json_response(raw)
 

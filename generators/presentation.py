@@ -452,12 +452,17 @@ Return JSON only:
 
 def generate_presentation(topic, grade, subject, num_slides, tone, board="CBSE",
                           api_key="", unsplash_key="", on_retry=None):
+    # ~250 tokens per slide (title + 4 bullets + speaker_notes) + 300 JSON overhead
+    # Keep well under Groq free-tier per-request ceiling to avoid HTTP 413
+    output_budget = min(num_slides * 250 + 300, 3000)
+
     raw  = call_groq(
         system=SYSTEM_PROMPT,
         user=_build_user_prompt(topic, grade, subject, num_slides, tone, board),
         temperature=0.65,
         api_key=api_key,
         on_retry=on_retry,
+        max_tokens=output_budget,
     )
     data = parse_json_response(raw)
     data.setdefault("tone",    tone)
