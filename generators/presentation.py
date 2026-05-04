@@ -395,7 +395,7 @@ DIFFERENT chapter headings — so should your slide_plan.
 """
 
 
-def _build_user_prompt(topic, grade, subject, num_slides, tone):
+def _build_user_prompt(topic, grade, subject, num_slides, tone, board="CBSE"):
     tone_rules      = _TONE_RULES.get(tone, _TONE_RULES["Formal"])
     subject_tip     = _subject_strategy(subject)
     grade_tip       = _grade_calibration(grade)
@@ -411,11 +411,13 @@ No abstract words. Every bullet needs a real number. No filler phrases.
 
     return f"""Create a {num_slides}-slide presentation:
 
-Topic: {topic} | Subject: {subject} | Grade: {grade} | Tone: {tone}
+Topic: {topic} | Subject: {subject} | Grade: {grade} | Board: {board} | Tone: {tone}
 
 GRADE CALIBRATION:
 {grade_tip}
 {grade_override}
+BOARD ALIGNMENT: Align all content, examples, terminology and exam-style depth to the {board} curriculum.
+
 SUBJECT STRATEGY:
 {subject_tip}
 {curriculum_note}
@@ -448,12 +450,12 @@ Return JSON only:
 }}"""
 
 
-def generate_presentation(topic, grade, subject, num_slides, tone, api_key,
-                          unsplash_key="", on_retry=None):
+def generate_presentation(topic, grade, subject, num_slides, tone, board="CBSE",
+                          api_key="", unsplash_key="", on_retry=None):
     raw  = call_groq(
         system=SYSTEM_PROMPT,
-        user=_build_user_prompt(topic, grade, subject, num_slides, tone),
-        temperature=0.82,
+        user=_build_user_prompt(topic, grade, subject, num_slides, tone, board),
+        temperature=0.65,
         api_key=api_key,
         on_retry=on_retry,
     )

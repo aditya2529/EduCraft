@@ -59,7 +59,7 @@ def _activity_types_block():
     return "\n".join(f"- {k}: {v}" for k, v in _ACTIVITY_TYPES.items())
 
 
-def _build_user_prompt(subject, topic, grade, duration, objectives, resources):
+def _build_user_prompt(subject, topic, grade, duration, objectives, resources, board="CBSE"):
     strategy = _teaching_strategy(subject)
 
     objectives_block = (
@@ -79,10 +79,14 @@ Subject:    {subject}
 Topic:      {topic}
 Grade:      {grade}
 Resources:  {resources}
+Board:      {board}
 Duration:   {duration} minutes
 
 ━━━ SUBJECT-SPECIFIC TEACHING STRATEGY ━━━
 {strategy}
+
+━━━ BOARD ALIGNMENT ━━━
+Align all content, examples, activities, and assessment style to the {board} curriculum for {grade}.
 
 ━━━ LEARNING OBJECTIVES ━━━
 {objectives_block}
@@ -204,10 +208,10 @@ Return ONLY this JSON (no markdown, no text outside the braces):
 
 
 def generate_lesson_plan(subject, topic, grade, duration, objectives, resources,
-                         api_key, on_retry=None):
+                         board="CBSE", api_key="", on_retry=None):
     raw  = call_groq(
         system=SYSTEM_PROMPT,
-        user=_build_user_prompt(subject, topic, grade, duration, objectives, resources),
+        user=_build_user_prompt(subject, topic, grade, duration, objectives, resources, board),
         temperature=0.4,
         api_key=api_key,
         on_retry=on_retry,

@@ -28,6 +28,7 @@ def call_groq(system: str, user: str, temperature: float, api_key: str,
                 ],
                 temperature=temperature,
                 response_format={"type": "json_object"},
+                max_tokens=4096,
             )
             return response.choices[0].message.content.strip()
 

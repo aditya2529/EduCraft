@@ -296,6 +296,7 @@ hr { border-color: #38383A !important; }
 # ── Lazy imports (after path setup) ───────────────────────────────────────────
 from generators.presentation import generate_presentation
 from generators.lesson_plan import generate_lesson_plan
+from generators.question_paper import generate_question_paper
 import groq as groq_sdk
 
 
@@ -306,11 +307,12 @@ if "unsplash_key" not in st.session_state:
     st.session_state.unsplash_key = _get_secret("UNSPLASH_ACCESS_KEY")
 
 # Generation flags + stored results + error messages
-for _k in ("pres_generating", "lp_generating"):
+for _k in ("pres_generating", "lp_generating", "qp_generating"):
     if _k not in st.session_state:
         st.session_state[_k] = False
 for _k in ("pres_result", "lp_result", "pres_params", "lp_params",
-           "pres_error", "lp_error"):
+           "pres_error", "lp_error",
+           "qp_student_result", "qp_answer_key_result", "qp_params", "qp_error"):
     if _k not in st.session_state:
         st.session_state[_k] = None
 
@@ -330,10 +332,30 @@ with st.sidebar:
         key="api_key_input",
     )
     if st.button("Save Key", use_container_width=True):
-        set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
-        load_dotenv(ENV_PATH, override=True)          # reload so os.getenv is fresh
-        st.session_state.groq_api_key = groq_key     # persist in session too
-        st.success("Key saved!")
+        if not groq_key or not groq_key.strip():
+            st.error("Please enter a key first.")
+        else:
+            with st.spinner("Validating key..."):
+                try:
+                    import groq as _groq_sdk
+                    _test = _groq_sdk.Groq(api_key=groq_key.strip())
+                    _test.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": "hi"}],
+                        max_tokens=1,
+                    )
+                    set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
+                    load_dotenv(ENV_PATH, override=True)
+                    st.session_state.groq_api_key = groq_key
+                    st.success("Key saved and verified!")
+                except _groq_sdk.AuthenticationError:
+                    st.error("Invalid key — please check and try again.")
+                except Exception:
+                    # Network issue etc — save anyway
+                    set_key(str(ENV_PATH), "GROQ_API_KEY", groq_key)
+                    load_dotenv(ENV_PATH, override=True)
+                    st.session_state.groq_api_key = groq_key
+                    st.success("Key saved! (Could not verify — check connection.)")
     # Keep session_state in sync as user types (without clicking Save)
     st.session_state.groq_api_key = groq_key
 
@@ -597,7 +619,7 @@ st.html("""
 </div>
 """)
 
-tab1, tab2 = st.tabs(["Presentation Generator", "Lesson Plan Generator"])
+tab1, tab2, tab3 = st.tabs(["Presentation Generator", "Lesson Plan Generator", "Question Paper Generator"])
 
 
 # ── Tab 1: Presentation Generator ─────────────────────────────────────────────
@@ -620,6 +642,8 @@ with tab1:
         with col4:
             tone = st.selectbox("Tone", ["Formal", "Fun", "Simple"])
 
+        board = st.selectbox("Board / Curriculum", ["CBSE", "ICSE", "State Board", "IB", "Other"])
+
         pres_submitted = st.form_submit_button(
             "Generating presentation..." if _pres_busy else "Generate Presentation",
             type="primary",
@@ -637,7 +661,7 @@ with tab1:
             st.stop()
         st.session_state.pres_params = dict(
             topic=topic, grade=grade, subject=subject,
-            num_slides=num_slides, tone=tone,
+            num_slides=num_slides, tone=tone, board=board,
         )
         st.session_state.pres_generating = True
         st.session_state.pres_result = None
@@ -657,7 +681,7 @@ with tab1:
             _status.info("🎨 Crafting your presentation...")
             pptx_bytes = generate_presentation(
                 topic=p["topic"], grade=p["grade"], subject=p["subject"],
-                num_slides=p["num_slides"], tone=p["tone"],
+                num_slides=p["num_slides"], tone=p["tone"], board=p.get("board", "CBSE"),
                 api_key=groq_key,
                 unsplash_key=st.session_state.unsplash_key,
                 on_retry=_pres_retry,
@@ -682,7 +706,7 @@ with tab1:
         with st.expander("What was generated", expanded=True):
             st.markdown(
                 f"**{p['num_slides']} slides** on *{p['topic']}* for **{p['grade']}** — "
-                f"{p['subject']} | Tone: {p['tone']}"
+                f"{p['subject']} | {p.get('board','CBSE')} | Tone: {p['tone']}"
             )
             st.markdown("Download the file below and open it in PowerPoint or Google Slides.")
         filename = f"{p['topic'].replace(' ', '_')}_presentation.pptx"
@@ -693,6 +717,11 @@ with tab1:
             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             use_container_width=True,
         )
+        if st.button("🔄 Regenerate (same settings)", use_container_width=True, key="pres_regen"):
+            st.session_state.pres_generating = True
+            st.session_state.pres_result = None
+            st.session_state.pres_error = None
+            st.rerun()
 
 
 # ── Tab 2: Lesson Plan Generator ──────────────────────────────────────────────
@@ -737,6 +766,8 @@ with tab2:
             ],
         )
 
+        lp_board = st.selectbox("Board / Curriculum", ["CBSE", "ICSE", "State Board", "IB", "Other"], key="lp_board")
+
         lp_submitted = st.form_submit_button(
             "Generating lesson plan..." if _lp_busy else "Generate Lesson Plan",
             type="primary",
@@ -755,6 +786,7 @@ with tab2:
         st.session_state.lp_params = dict(
             subject=lp_subject, topic=lp_topic, grade=lp_grade,
             duration=lp_duration, objectives=lp_objectives, resources=lp_resources,
+            board=lp_board,
         )
         st.session_state.lp_generating = True
         st.session_state.lp_result = None
@@ -775,7 +807,8 @@ with tab2:
             pdf_bytes = generate_lesson_plan(
                 subject=p["subject"], topic=p["topic"], grade=p["grade"],
                 duration=p["duration"], objectives=p["objectives"],
-                resources=p["resources"], api_key=groq_key,
+                resources=p["resources"], board=p.get("board", "CBSE"),
+                api_key=groq_key,
                 on_retry=_lp_retry,
             )
             st.session_state.lp_result = pdf_bytes
@@ -811,3 +844,151 @@ with tab2:
             mime="application/pdf",
             use_container_width=True,
         )
+        if st.button("🔄 Regenerate (same settings)", use_container_width=True, key="lp_regen"):
+            st.session_state.lp_generating = True
+            st.session_state.lp_result = None
+            st.session_state.lp_error = None
+            st.rerun()
+
+
+# ── Tab 3: Question Paper Generator ───────────────────────────────────────────
+with tab3:
+    st.markdown("#### Create a CBSE-style question paper with student version + answer key")
+
+    _qp_busy = st.session_state.qp_generating
+    with st.form("question_paper_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            qp_subject = st.text_input("Subject *", placeholder="e.g. Science, Mathematics")
+        with col2:
+            qp_topic = st.text_input("Topic *", placeholder="e.g. Chemical Reactions, Fractions")
+
+        col3, col4 = st.columns(2)
+        with col3:
+            qp_grade = st.text_input("Grade / Level *", placeholder="e.g. Class 10, Grade 8")
+        with col4:
+            qp_board = st.selectbox("Board", ["CBSE", "ICSE", "State Board", "IB", "Other"], key="qp_board_sel")
+
+        col5, col6 = st.columns(2)
+        with col5:
+            qp_total_marks = st.selectbox("Total Marks", [10, 20, 40, 50, 80, 100], index=2)
+        with col6:
+            qp_difficulty = st.selectbox("Difficulty", ["Easy", "Balanced", "Hard"], index=1)
+
+        st.markdown("**Section Breakdown**")
+        col7, col8, col9 = st.columns(3)
+        with col7:
+            qp_mcq_count  = st.number_input("MCQs (1 mark each)", min_value=0, max_value=30, value=10, step=1)
+        with col8:
+            qp_short_count = st.number_input("Short Ans (marks each)", min_value=0, max_value=15, value=5, step=1)
+            qp_short_marks = st.number_input("Marks per short answer", min_value=1, max_value=5, value=2, step=1)
+        with col9:
+            qp_long_count  = st.number_input("Long Ans (marks each)", min_value=0, max_value=10, value=2, step=1)
+            qp_long_marks  = st.number_input("Marks per long answer", min_value=3, max_value=10, value=5, step=1)
+
+        qp_submitted = st.form_submit_button(
+            "Generating question paper..." if _qp_busy else "Generate Question Paper",
+            type="primary",
+            use_container_width=True,
+            disabled=_qp_busy,
+        )
+
+    # Validate total marks match
+    if qp_submitted:
+        computed = qp_mcq_count * 1 + qp_short_count * qp_short_marks + qp_long_count * qp_long_marks
+        if not _validate_key(groq_key):
+            st.stop()
+        if not _validate_fields(Subject=qp_subject, Topic=qp_topic, **{"Grade/Level": qp_grade}):
+            st.stop()
+        if not _validate_inputs(qp_topic, qp_grade, qp_subject):
+            st.stop()
+        if computed != qp_total_marks:
+            st.warning(
+                f"⚠️ Section breakdown adds up to **{computed} marks**, "
+                f"but Total Marks is set to **{qp_total_marks}**. "
+                f"Adjust the counts or total marks so they match."
+            )
+            st.stop()
+        st.session_state.qp_params = dict(
+            subject=qp_subject, topic=qp_topic, grade=qp_grade, board=qp_board,
+            total_marks=qp_total_marks, difficulty=qp_difficulty,
+            mcq_count=int(qp_mcq_count), short_count=int(qp_short_count),
+            long_count=int(qp_long_count), mcq_marks=1,
+            short_marks=int(qp_short_marks), long_marks=int(qp_long_marks),
+        )
+        st.session_state.qp_generating = True
+        st.session_state.qp_student_result = None
+        st.session_state.qp_answer_key_result = None
+        st.session_state.qp_error = None
+        st.rerun()
+
+    # Phase 2: generate
+    if st.session_state.qp_generating:
+        p = st.session_state.qp_params
+        _qp_status = st.empty()
+        def _qp_retry(attempt, wait):
+            _qp_status.warning(
+                f"⏳ Groq rate limit hit — auto-retrying in {wait} seconds "
+                f"(attempt {attempt} of 3)..."
+            )
+        try:
+            _qp_status.info("📝 Generating your question paper and answer key...")
+            student_pdf, answer_key_pdf = generate_question_paper(
+                subject=p["subject"], topic=p["topic"], grade=p["grade"],
+                board=p["board"], total_marks=p["total_marks"],
+                mcq_count=p["mcq_count"], short_count=p["short_count"],
+                long_count=p["long_count"], mcq_marks=p["mcq_marks"],
+                short_marks=p["short_marks"], long_marks=p["long_marks"],
+                difficulty=p["difficulty"], api_key=groq_key,
+                on_retry=_qp_retry,
+            )
+            st.session_state.qp_student_result = student_pdf
+            st.session_state.qp_answer_key_result = answer_key_pdf
+            st.session_state.qp_error = None
+        except Exception as e:
+            st.session_state.qp_error = _groq_error_message(e)
+        finally:
+            st.session_state.qp_generating = False
+            _qp_status.empty()
+        st.rerun()
+
+    if st.session_state.qp_error:
+        st.error(st.session_state.qp_error)
+
+    # Phase 3: show results
+    if st.session_state.qp_student_result:
+        p = st.session_state.qp_params
+        st.success("Your question paper is ready!")
+        with st.expander("What was generated", expanded=True):
+            st.markdown(
+                f"**{p['total_marks']}-mark paper** on *{p['topic']}* for **{p['grade']}** — "
+                f"{p['subject']} | {p['board']} | Difficulty: {p['difficulty']}"
+            )
+            st.markdown(
+                f"Sections: {p['mcq_count']} MCQs · {p['short_count']} Short ({p['short_marks']}m) · "
+                f"{p['long_count']} Long ({p['long_marks']}m)"
+            )
+        safe_topic = p['topic'].replace(' ', '_')
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.download_button(
+                label="Download Student Paper (PDF)",
+                data=st.session_state.qp_student_result,
+                file_name=f"{safe_topic}_question_paper.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        with col_b:
+            st.download_button(
+                label="Download Answer Key (PDF)",
+                data=st.session_state.qp_answer_key_result,
+                file_name=f"{safe_topic}_answer_key.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        if st.button("🔄 Regenerate (same settings)", use_container_width=True, key="qp_regen"):
+            st.session_state.qp_generating = True
+            st.session_state.qp_student_result = None
+            st.session_state.qp_answer_key_result = None
+            st.session_state.qp_error = None
+            st.rerun()
